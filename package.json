@@ -1,5 +1,5 @@
 {
-  "name": "family-brain-v4-temp",
+  "name": "itineraries",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,19 +9,33 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.7",
+    "@hello-pangea/dnd": "^18.0.1",
+    "@heroicons/react": "^2.2.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.56.0",
     "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-query-devtools": "^5.85.5",
+    "@types/dagre": "^0.7.53",
     "@types/uuid": "^10.0.0",
+    "@xyflow/react": "^12.8.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dagre": "^0.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.1",
+    "framer-motion": "^12.23.12",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.542.0",
     "next": "15.5.2",
     "react": "19.1.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "19.1.0",
+    "reactflow": "^11.11.4",
     "tailwind-merge": "^3.3.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
