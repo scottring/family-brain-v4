@@ -17,7 +17,7 @@ export function TimeGutter({ timeSlots }: TimeGutterProps) {
           key={timeSlot}
           className="h-16 flex items-start justify-end pr-2 pt-1"
         >
-          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+          <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">
             {formatDisplayTime(timeSlot)}
           </span>
         </div>

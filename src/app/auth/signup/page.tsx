@@ -9,7 +9,6 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [familyName, setFamilyName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -29,47 +28,30 @@ export default function SignupPage() {
           data: {
             full_name: fullName,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (authError) throw authError;
       if (!authData.user) throw new Error('No user returned');
 
-      // Create user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: authData.user.id,
-          email: authData.user.email,
-          full_name: fullName,
-        });
+      // Check if email confirmation is required
+      if (authData.user && !authData.session) {
+        setError('Please check your email and click the confirmation link to complete your account setup.');
+        return;
+      }
 
-      if (profileError) throw profileError;
+      // If we have a session, user is confirmed and logged in
+      if (authData.session) {
+        // User profile and family are automatically created by database triggers
+        // No need to manually create them here
+        
+        // Wait a moment for the triggers to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Create family
-      const { data: familyData, error: familyError } = await supabase
-        .from('families')
-        .insert({
-          name: familyName || `${fullName}'s Family`,
-        })
-        .select()
-        .single();
-
-      if (familyError) throw familyError;
-
-      // Add user to family as owner
-      const { error: memberError } = await supabase
-        .from('family_members')
-        .insert({
-          family_id: familyData.id,
-          user_id: authData.user.id,
-          role: 'owner',
-        });
-
-      if (memberError) throw memberError;
-
-      router.push('/today');
-      router.refresh();
+        router.push('/today');
+        router.refresh();
+      }
     } catch (error: any) {
       setError(error.message || 'An error occurred during signup');
     } finally {
@@ -94,7 +76,11 @@ export default function SignupPage() {
         
         <form className="mt-8 space-y-6 bg-white p-8 rounded-lg shadow" onSubmit={handleSignup}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+            <div className={`border px-4 py-3 rounded ${
+              error.includes('check your email') 
+                ? 'bg-blue-50 border-blue-200 text-blue-600' 
+                : 'bg-red-50 border-red-200 text-red-600'
+            }`}>
               {error}
             </div>
           )}
@@ -149,20 +135,6 @@ export default function SignupPage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="familyName" className="block text-sm font-medium text-gray-700">
-                Family Name (optional)
-              </label>
-              <input
-                id="familyName"
-                name="familyName"
-                type="text"
-                value={familyName}
-                onChange={(e) => setFamilyName(e.target.value)}
-                placeholder="e.g., The Smith Family"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
           </div>
 
           <button

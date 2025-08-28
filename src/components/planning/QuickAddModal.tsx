@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
 import { scheduleService } from '@/lib/services/ScheduleService'
-import { getCurrentDate, getTimeSlots } from '@/lib/utils'
+import { getTimeSlots } from '@/lib/utils'
 
 interface QuickAddModalProps {
   isOpen: boolean

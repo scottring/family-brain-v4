@@ -44,10 +44,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages (except callback)
   if (user && isAuthPage && !request.nextUrl.pathname.includes('callback')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = '/today'
     return NextResponse.redirect(url)
   }
 

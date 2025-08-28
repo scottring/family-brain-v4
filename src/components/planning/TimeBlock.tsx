@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useDrop } from 'react-dnd'
 import { 
   ClockIcon, 
   EllipsisHorizontalIcon,
@@ -10,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { TimeBlockWithItems } from '@/lib/types/database'
 import { ScheduleItemCard } from './ScheduleItemCard'
-import { formatTimeRange, timeToMinutes, calculateDuration } from '@/lib/utils'
+import { formatTimeRange, timeToMinutes, calculateDuration, cn } from '@/lib/utils'
 
 interface TimeBlockProps {
   timeBlock: TimeBlockWithItems
@@ -19,6 +20,25 @@ interface TimeBlockProps {
 
 export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  
+  // Set up drop functionality for moving items to this time block
+  const [{ isOver, canDrop }, drop] = useDrop({
+    accept: 'scheduleItem',
+    drop: async (draggedItem: { scheduleItem: any; sourceTimeBlockId: string }) => {
+      if (draggedItem.sourceTimeBlockId !== timeBlock.id) {
+        // TODO: Move item to this time block
+        console.log('Moving item to time block:', {
+          item: draggedItem.scheduleItem,
+          from: draggedItem.sourceTimeBlockId,
+          to: timeBlock.id
+        })
+      }
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop()
+    })
+  })
   
   const startMinutes = timeToMinutes(timeBlock.start_time)
   const duration = calculateDuration(timeBlock.start_time, timeBlock.end_time)
@@ -33,81 +53,65 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
   
   return (
     <motion.div
+      ref={drop}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="absolute left-2 right-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 overflow-hidden group hover:shadow-md transition-shadow"
+      className={cn(
+        "absolute left-1 right-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border overflow-hidden group hover:shadow-md transition-all",
+        isOver && canDrop
+          ? "border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-50 dark:bg-blue-900/20"
+          : "border-gray-200 dark:border-gray-700"
+      )}
       style={{
         top: `${topPosition}px`,
         height: `${height}px`,
-        minHeight: '32px'
+        minHeight: '40px'
       }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b border-gray-100 dark:border-gray-600">
-        <div className="flex items-center space-x-2 flex-1 min-w-0">
-          <ClockIcon className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+      {/* Simplified Header - Only show time */}
+      <div className="px-2 py-1 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <ClockIcon className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
             {formatTimeRange(timeBlock.start_time, timeBlock.end_time)}
           </span>
           {totalItems > 0 && (
-            <div className="flex items-center space-x-1 ml-2">
-              <div className="flex -space-x-1">
-                {completedItems.length > 0 && (
-                  <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                    <CheckIcon className="h-2.5 w-2.5 text-white" />
-                  </div>
-                )}
-                {timeBlock.schedule_items.some(item => item.completed_by) && (
-                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                    <UserIcon className="h-2.5 w-2.5 text-white" />
-                  </div>
-                )}
-              </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {completedItems.length}/{totalItems}
-              </span>
-            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              ({completedItems.length}/{totalItems})
+            </span>
           )}
         </div>
         
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
-        >
-          <EllipsisHorizontalIcon className="h-4 w-4 text-gray-400" />
-        </button>
+        {/* Progress indicator dots */}
+        {totalItems > 0 && (
+          <div className="flex gap-0.5">
+            {Array.from({ length: Math.min(totalItems, 3) }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  i < completedItems.length
+                    ? "bg-green-500"
+                    : "bg-gray-300 dark:bg-gray-600"
+                )}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Progress Bar */}
-      {totalItems > 0 && (
-        <div className="h-1 bg-gray-100 dark:bg-gray-600">
-          <div
-            className="h-full bg-green-500 transition-all duration-300"
-            style={{ width: `${completionRate}%` }}
-          />
-        </div>
-      )}
-
-      {/* Items */}
-      <div className="p-2 space-y-1 overflow-hidden">
+      {/* Items - Improved layout */}
+      <div className="px-2 py-1 flex flex-col gap-1 overflow-y-auto">
         {timeBlock.schedule_items.map((item, index) => (
           <ScheduleItemCard
             key={item.id}
             item={item}
             timeBlockId={timeBlock.id}
-            isExpanded={isExpanded}
-            isCompact={!isExpanded && timeBlock.schedule_items.length > 2 && index >= 2}
+            isExpanded={false}
+            isCompact={false}
+            isGridView={true}
           />
         ))}
-        
-        {!isExpanded && timeBlock.schedule_items.length > 2 && (
-          <button
-            onClick={() => setIsExpanded(true)}
-            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-          >
-            +{timeBlock.schedule_items.length - 2} more
-          </button>
-        )}
       </div>
     </motion.div>
   )

@@ -17,6 +17,7 @@ interface AppState {
   currentView: 'today' | 'planning' | 'sops'
   isMobile: boolean
   isLoading: boolean
+  isInitializing: boolean
   
   // Settings
   preferences: {
@@ -34,6 +35,7 @@ interface AppState {
   setCurrentView: (view: 'today' | 'planning' | 'sops') => void
   setIsMobile: (isMobile: boolean) => void
   setIsLoading: (isLoading: boolean) => void
+  setIsInitializing: (isInitializing: boolean) => void
   updatePreferences: (preferences: Partial<AppState['preferences']>) => void
   reset: () => void
 }
@@ -46,6 +48,7 @@ const initialState = {
   currentView: 'today' as const,
   isMobile: false,
   isLoading: false,
+  isInitializing: false,
   preferences: {
     theme: 'system' as const,
     language: 'en',
@@ -72,6 +75,8 @@ export const useAppStore = create<AppState>()(
       setIsMobile: (isMobile) => set({ isMobile }, false, 'setIsMobile'),
       
       setIsLoading: (isLoading) => set({ isLoading }, false, 'setIsLoading'),
+
+      setIsInitializing: (isInitializing) => set({ isInitializing }, false, 'setIsInitializing'),
       
       updatePreferences: (newPreferences) => set(
         state => ({

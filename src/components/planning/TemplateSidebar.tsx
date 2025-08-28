@@ -9,11 +9,16 @@ import {
   PlusIcon,
   BookOpenIcon,
   ListBulletIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  PencilIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
 import { TemplateWithSteps, TemplateCategory } from '@/lib/types/database'
 import { useTemplateStore } from '@/lib/stores/useTemplateStore'
 import { useAppStore } from '@/lib/stores/useAppStore'
+import { CreateTemplateModal } from './CreateTemplateModal'
+import { EditTemplateModal } from '@/components/templates/EditTemplateModal'
+import { templateService } from '@/lib/services/TemplateService'
 import { cn } from '@/lib/utils'
 
 const categoryLabels: Record<TemplateCategory, string> = {
@@ -58,6 +63,7 @@ export function TemplateSidebar() {
   } = useTemplateStore()
   
   const [showFilters, setShowFilters] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   
   const filteredTemplates = getFilteredTemplates()
   const categories = Object.keys(templatesByCategory) as TemplateCategory[]
@@ -80,7 +86,11 @@ export function TemplateSidebar() {
             >
               <FunnelIcon className="h-4 w-4" />
             </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="Create new template"
+            >
               <PlusIcon className="h-4 w-4" />
             </button>
           </div>
@@ -88,7 +98,7 @@ export function TemplateSidebar() {
 
         {/* Search */}
         <div className="relative mb-4">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
             placeholder="Search templates..."
@@ -158,7 +168,7 @@ export function TemplateSidebar() {
         <div className="flex-1 overflow-y-auto space-y-2">
           {filteredTemplates.length === 0 ? (
             <div className="text-center py-8">
-              <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <BookOpenIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 No templates found
               </p>
@@ -173,6 +183,12 @@ export function TemplateSidebar() {
           )}
         </div>
       </div>
+
+      {/* Create Template Modal */}
+      <CreateTemplateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
     </div>
   )
 }
@@ -182,6 +198,9 @@ interface DraggableTemplateProps {
 }
 
 function DraggableTemplate({ template }: DraggableTemplateProps) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const { templates, setTemplates } = useTemplateStore()
+  
   const [{ isDragging }, drag] = useDrag({
     type: 'template',
     item: { template },
@@ -193,53 +212,107 @@ function DraggableTemplate({ template }: DraggableTemplateProps) {
   const hasSteps = template.template_steps.length > 0
   const IconComponent = hasSteps ? ListBulletIcon : DocumentTextIcon
 
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete template "${template.title}"?`)) return
+    
+    try {
+      await templateService.deleteTemplate(template.id)
+      // Remove from local state
+      const updatedTemplates = templates.filter(t => t.id !== template.id)
+      setTemplates(updatedTemplates)
+    } catch (error) {
+      console.error('Error deleting template:', error)
+      alert('Failed to delete template. Please try again.')
+    }
+  }
+
   return (
-    <motion.div
-      ref={drag}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: isDragging ? 0.5 : 1, y: 0 }}
-      className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 cursor-move hover:shadow-md transition-all group"
-    >
-      <div className="flex items-start space-x-3">
-        <div className="flex-shrink-0">
-          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-            {template.icon ? (
-              <span className="text-lg">{template.icon}</span>
-            ) : (
-              <IconComponent className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            )}
+    <>
+      <motion.div
+        ref={drag}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: isDragging ? 0.5 : 1, y: 0 }}
+        className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 cursor-move hover:shadow-md transition-all group"
+      >
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+              {template.icon ? (
+                <span className="text-lg">{template.icon}</span>
+              ) : (
+                <IconComponent className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              )}
+            </div>
           </div>
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-            {template.title}
-          </h4>
-          {template.description && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-              {template.description}
-            </p>
-          )}
           
-          <div className="flex items-center space-x-3 mt-2">
-            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full">
-              {categoryIcons[template.category]} {categoryLabels[template.category]}
-            </span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  {template.title}
+                </h4>
+                {template.description && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                    {template.description}
+                  </p>
+                )}
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsEditModalOpen(true)
+                  }}
+                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                  title="Edit template"
+                >
+                  <PencilIcon className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
+                </button>
+                {!template.is_system && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDelete()
+                    }}
+                    className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                    title="Delete template"
+                  >
+                    <TrashIcon className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400 hover:text-red-600" />
+                  </button>
+                )}
+              </div>
+            </div>
             
-            {hasSteps && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {template.template_steps.length} steps
+            <div className="flex items-center space-x-3 mt-2">
+              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full">
+                {categoryIcons[template.category]} {categoryLabels[template.category]}
               </span>
-            )}
-            
-            {template.is_system && (
-              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                System
+              
+              {hasSteps && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {template.template_steps.length} steps
+                </span>
+              )}
+              
+              {template.is_system && (
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                  System
               </span>
             )}
           </div>
         </div>
       </div>
     </motion.div>
+    
+    {/* Edit Template Modal */}
+    <EditTemplateModal
+      template={template}
+      isOpen={isEditModalOpen}
+      onClose={() => setIsEditModalOpen(false)}
+      mode="permanent"
+    />
+    </>
   )
 }

@@ -5,6 +5,7 @@ import { useDrop } from 'react-dnd'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { ScheduleWithTimeBlocks, TemplateWithSteps } from '@/lib/types/database'
 import { TimeBlock } from './TimeBlock'
+import { TimeSlotDropZone } from './TimeSlotDropZone'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { scheduleService } from '@/lib/services/ScheduleService'
@@ -45,14 +46,21 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop()
     }),
-    hover: () => setIsDragOver(true),
+    hover: (item, monitor) => {
+      setIsDragOver(monitor.isOver())
+    },
   })
 
   const createTimeBlockFromTemplate = async (
     template: TemplateWithSteps,
     startTimeSlot: string
   ) => {
-    if (!currentFamilyId || !schedule) return
+    if (!currentFamilyId || !schedule) {
+      console.warn('Cannot create time block: missing familyId or schedule', { currentFamilyId, schedule })
+      return
+    }
+
+    console.log('Creating time block from template:', { template, startTimeSlot, date, schedule: schedule.id })
 
     try {
       // Calculate end time (assume 1 hour duration by default)
@@ -60,12 +68,16 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
       const endMinutes = startMinutes + 60
       const endTime = minutesToTime(endMinutes)
 
+      console.log('Time calculation:', { startTimeSlot, startMinutes, endTime })
+
       // Create time block
       const timeBlock = await scheduleService.createTimeBlock(
         schedule.id,
         startTimeSlot,
         endTime
       )
+
+      console.log('Created time block:', timeBlock)
 
       // Create schedule item from template
       const scheduleItem = await scheduleService.createScheduleItem(timeBlock.id, {
@@ -77,18 +89,22 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
         metadata: {}
       })
 
+      console.log('Created schedule item:', scheduleItem)
+
       // Create template instance if it's a procedure template
       if (template.template_steps.length > 0) {
-        await templateService.createTemplateInstance(
+        const templateInstance = await templateService.createTemplateInstance(
           template.id,
           scheduleItem.id
         )
+        console.log('Created template instance:', templateInstance)
       }
 
       // Reload the schedule
-      const updatedSchedule = await scheduleService.getScheduleByDate(currentFamilyId, date)
+      const updatedSchedule = await scheduleService.getScheduleForDate(currentFamilyId, date)
       if (updatedSchedule) {
         setWeekSchedule(date, updatedSchedule)
+        console.log('Updated schedule:', updatedSchedule)
       }
     } catch (error) {
       console.error('Error creating time block from template:', error)
@@ -96,12 +112,19 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
   }
 
   const handleQuickAdd = async (timeSlot: string) => {
-    if (!currentFamilyId || !schedule) return
+    if (!currentFamilyId || !schedule) {
+      console.warn('Cannot create quick item: missing familyId or schedule', { currentFamilyId, schedule })
+      return
+    }
+
+    console.log('Creating quick add item:', { timeSlot, date, schedule: schedule.id })
 
     try {
       const startMinutes = timeToMinutes(timeSlot)
       const endMinutes = startMinutes + 30 // 30 minute default
       const endTime = minutesToTime(endMinutes)
+
+      console.log('Quick add time calculation:', { timeSlot, startMinutes, endTime })
 
       const timeBlock = await scheduleService.createTimeBlock(
         schedule.id,
@@ -109,16 +132,21 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
         endTime
       )
 
-      await scheduleService.createScheduleItem(timeBlock.id, {
+      console.log('Created quick add time block:', timeBlock)
+
+      const scheduleItem = await scheduleService.createScheduleItem(timeBlock.id, {
         title: 'New Item',
         item_type: 'simple',
         order_position: 0
       })
 
+      console.log('Created quick add schedule item:', scheduleItem)
+
       // Reload the schedule
-      const updatedSchedule = await scheduleService.getScheduleByDate(currentFamilyId, date)
+      const updatedSchedule = await scheduleService.getScheduleForDate(currentFamilyId, date)
       if (updatedSchedule) {
         setWeekSchedule(date, updatedSchedule)
+        console.log('Updated schedule after quick add:', updatedSchedule)
       }
     } catch (error) {
       console.error('Error creating quick item:', error)
@@ -159,12 +187,12 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
 
       {/* Empty State */}
       {!schedule?.time_blocks?.length && (
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
           <div className="text-center">
             <div className="text-gray-400 dark:text-gray-500 mb-2">
               <PlusIcon className="h-8 w-8 mx-auto" />
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               Drag templates here or click to add
             </p>
           </div>
@@ -174,45 +202,3 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
   )
 }
 
-interface TimeSlotDropZoneProps {
-  timeSlot: string
-  date: string
-  isHour: boolean
-  onDrop: (template: TemplateWithSteps) => void
-  onQuickAdd: () => void
-}
-
-function TimeSlotDropZone({ 
-  timeSlot, 
-  date, 
-  isHour, 
-  onDrop, 
-  onQuickAdd 
-}: TimeSlotDropZoneProps) {
-  const [{ isOver }, drop] = useDrop({
-    accept: 'template',
-    drop: (item: { template: TemplateWithSteps }) => {
-      onDrop(item.template)
-      return { timeSlot, date }
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true })
-    })
-  })
-
-  return (
-    <div
-      ref={drop}
-      className={`h-4 border-t border-gray-100 dark:border-gray-700 group hover:bg-blue-50 dark:hover:bg-blue-900/20 ${
-        isHour ? 'border-gray-200 dark:border-gray-600' : ''
-      } ${isOver ? 'bg-blue-100 dark:bg-blue-900/30' : ''}`}
-    >
-      <button
-        onClick={onQuickAdd}
-        className="absolute right-1 top-0 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <PlusIcon className="h-3 w-3 text-gray-400 hover:text-blue-600" />
-      </button>
-    </div>
-  )
-}

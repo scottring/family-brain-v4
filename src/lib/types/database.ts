@@ -151,3 +151,25 @@ export interface TemplateWithSteps extends Template {
 export interface FamilyMemberWithProfile extends FamilyMember {
   user_profile: UserProfile
 }
+
+// Helper type for schedules with time blocks
+export interface ScheduleWithTimeBlocks extends Schedule {
+  time_blocks: (TimeBlock & {
+    schedule_items: ScheduleItem[]
+  })[]
+}
+
+// Additional helper types for stores
+export interface TimeBlockWithItems extends TimeBlock {
+  schedule_items: ScheduleItemWithTemplate[]
+}
+
+export interface ScheduleItemWithTemplate extends ScheduleItem {
+  template_instance?: TemplateInstanceWithSteps
+}
+
+export interface TemplateInstanceWithSteps extends TemplateInstance {
+  template_instance_steps: (TemplateInstanceStep & {
+    template_step: TemplateStep
+  })[]
+}

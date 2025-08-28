@@ -9,13 +9,17 @@ import {
   UserIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  ExternalLinkIcon
+  ArrowTopRightOnSquareIcon,
+  EyeIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid'
 import { ScheduleItemWithTemplate } from '@/lib/types/database'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
+import { useFamilyPresenceStore } from '@/lib/stores/useFamilyPresenceStore'
 import { scheduleService } from '@/lib/services/ScheduleService'
+import { optimisticToggleScheduleItem } from '@/lib/services/OptimisticUpdateService'
 import { cn } from '@/lib/utils'
 
 interface ExecutionScheduleItemProps {
@@ -29,8 +33,9 @@ export function ExecutionScheduleItem({
   timeBlockId, 
   index 
 }: ExecutionScheduleItemProps) {
-  const { user } = useAppStore()
+  const { user, currentFamilyMembers } = useAppStore()
   const { updateScheduleItem, setArtifactPanelItemId } = useScheduleStore()
+  const { getEditingUsers, currentActivities, getOnlineMembers } = useFamilyPresenceStore()
   
   const [isToggling, setIsToggling] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -38,22 +43,59 @@ export function ExecutionScheduleItem({
   const isCompleted = !!item.completed_at
   const hasSteps = item.template?.template_steps?.length > 0
   const hasInstance = !!item.template_instance
+  const editingUsers = getEditingUsers(item.id)
+  const isBeingEdited = editingUsers.length > 0
+  const isEditedByOthers = editingUsers.some(editor => editor.user_id !== user?.id)
+  
+  // Find if any family member is currently working on this item
+  const getSpouseActivity = () => {
+    const spouseMembers = currentFamilyMembers.filter(member => member.user_id !== user?.id)
+    return spouseMembers.map(member => {
+      const activity = currentActivities[member.user_id]
+      const isEditing = editingUsers.find(editor => editor.user_id === member.user_id)
+      return {
+        member,
+        activity,
+        isEditing
+      }
+    }).filter(info => info.activity || info.isEditing)
+  }
+  
+  const spouseActivity = getSpouseActivity()
 
   const handleToggleComplete = async () => {
     if (!user || isToggling) return
     
     setIsToggling(true)
+    
+    // Create optimistic update data
+    const optimisticItem = {
+      ...item,
+      completed_at: isCompleted ? null : new Date().toISOString(),
+      completed_by: isCompleted ? null : user.id
+    }
+    
+    // Apply optimistic update immediately
+    updateScheduleItem(item.id, optimisticItem)
+    
     try {
-      let updatedItem
-      if (isCompleted) {
-        updatedItem = await scheduleService.uncompleteScheduleItem(item.id)
-      } else {
-        updatedItem = await scheduleService.completeScheduleItem(item.id, user.id)
-      }
-      
-      updateScheduleItem(item.id, updatedItem)
+      // Perform the actual update with rollback capability
+      await optimisticToggleScheduleItem(
+        item.id,
+        item, // original data for rollback
+        optimisticItem,
+        // The actual API call
+        isCompleted 
+          ? scheduleService.uncompleteScheduleItem(item.id)
+          : scheduleService.completeScheduleItem(item.id, user.id),
+        // Rollback handler
+        (rollbackData) => {
+          updateScheduleItem(item.id, rollbackData)
+        }
+      )
     } catch (error) {
       console.error('Error toggling item completion:', error)
+      // Error handling is done by optimistic update service
     } finally {
       setIsToggling(false)
     }
@@ -84,12 +126,22 @@ export function ExecutionScheduleItem({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
       className={cn(
-        'rounded-lg border transition-all duration-200',
+        'rounded-lg border transition-all duration-200 relative',
         isCompleted
           ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+          : isEditedByOthers
+          ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-600 ring-1 ring-orange-200 dark:ring-orange-800'
           : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
       )}
     >
+      {/* Editing indicator pulse effect */}
+      {isEditedByOthers && (
+        <motion.div
+          className="absolute inset-0 rounded-lg bg-orange-200 dark:bg-orange-800"
+          animate={{ opacity: [0.2, 0.05, 0.2] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+      )}
       <div className="p-4">
         <div className="flex items-start space-x-3">
           {/* Completion Toggle */}
@@ -132,6 +184,40 @@ export function ExecutionScheduleItem({
                   </p>
                 )}
 
+                {/* Family Activity Indicators */}
+                {spouseActivity.length > 0 && (
+                  <div className="mb-2 space-y-1">
+                    {spouseActivity.map((info, idx) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center space-x-2 text-xs"
+                      >
+                        {info.isEditing ? (
+                          <>
+                            <div className="flex items-center space-x-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/50 rounded-full">
+                              <PencilIcon className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                              <span className="font-medium text-orange-700 dark:text-orange-300">
+                                {info.member.user_profile.full_name || 'Family member'} is editing this
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/50 rounded-full">
+                              <EyeIcon className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                              <span className="text-blue-700 dark:text-blue-300">
+                                {info.member.user_profile.full_name || 'Family member'}: {info.activity}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Completion Info */}
                 {item.completed_at && item.completed_by && (
                   <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
@@ -151,7 +237,7 @@ export function ExecutionScheduleItem({
                     className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                     title="Open procedure steps"
                   >
-                    <ExternalLinkIcon className="h-4 w-4" />
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                   </button>
                 )}
                 
@@ -217,7 +303,7 @@ export function ExecutionScheduleItem({
                               {instanceStep.completed_at ? (
                                 <CheckCircleIconSolid className="h-3 w-3 text-green-600 dark:text-green-400" />
                               ) : (
-                                <CheckCircleIcon className="h-3 w-3 text-gray-400" />
+                                <CheckCircleIcon className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                               )}
                               <span className={cn(
                                 instanceStep.completed_at 

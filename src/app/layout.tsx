@@ -1,15 +1,34 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/components/common/AuthProvider";
-import { RealtimeProvider } from "@/components/common/RealtimeProvider";
-import { AppShell } from "@/components/common/AppShell";
+import { ThemeProvider } from "@/components/common/ThemeProvider";
+import { AppInitializer } from "@/components/common/AppInitializer";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Itineraries - Smart Daily Companion",
-  description: "Execute your day efficiently with time-blocked schedules and smart checklists",
+  title: "Family Brain V4 - Smart Daily Companion",
+  description: "Execute your day efficiently with time-blocked schedules and smart checklists for the whole family",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Family Brain"
+  },
+  other: {
+    "mobile-web-app-capable": "yes"
+  }
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#6366f1' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' }
+  ],
 };
 
 export default function RootLayout({
@@ -18,15 +37,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/next.svg" type="image/svg+xml" />
+      </head>
       <body className={inter.className} suppressHydrationWarning>
-        <AuthProvider>
-          <RealtimeProvider>
-            <AppShell>
-              {children}
-            </AppShell>
-          </RealtimeProvider>
-        </AuthProvider>
+        <ThemeProvider defaultTheme="system">
+          <AppInitializer />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

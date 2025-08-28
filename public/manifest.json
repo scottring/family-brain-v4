@@ -1,0 +1,46 @@
+{
+  "name": "Family Brain V4 - Smart Daily Companion",
+  "short_name": "Family Brain", 
+  "description": "Execute your day efficiently with time-blocked schedules and smart checklists for the whole family",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [],
+  "shortcuts": [
+    {
+      "name": "Today's Schedule",
+      "short_name": "Today",
+      "description": "View and execute today's time-blocked schedule", 
+      "url": "/today"
+    },
+    {
+      "name": "Planning View",
+      "short_name": "Plan",
+      "description": "Plan your week with drag & drop scheduling",
+      "url": "/planning"
+    },
+    {
+      "name": "Quick SOPs",
+      "short_name": "SOPs",
+      "description": "Access standard operating procedures",
+      "url": "/sops"
+    }
+  ],
+  "categories": ["productivity", "lifestyle", "utilities"],
+  "screenshots": [
+    {
+      "src": "/screenshots/wide.png",
+      "sizes": "1280x720", 
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/narrow.png",
+      "sizes": "640x1136",
+      "type": "image/png", 
+      "form_factor": "narrow"
+    }
+  ]
+}

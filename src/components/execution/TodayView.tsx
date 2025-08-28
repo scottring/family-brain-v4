@@ -4,12 +4,139 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { redirect, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Clock,
+  Calendar,
+  CheckCircle2,
+  Target,
+  Users,
+  Play,
+  BookOpen,
+  ArrowRight,
+  Sun,
+  Moon,
+  Zap,
+  Timer,
+  TrendingUp,
+  Star,
+  Focus
+} from 'lucide-react'
+import { AppShell } from '@/components/common/AppShell'
+import { TodayViewSkeleton } from '@/components/common/LoadingSkeletons'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { ExecutionTimeBlock } from './ExecutionTimeBlock'
+import { CurrentTimeIndicator } from './CurrentTimeIndicator'
+import { FocusMode } from './FocusMode'
+import { useAppStore } from '@/lib/stores/useAppStore'
+import { ScheduleWithDetails, ScheduleItem, TimeBlockWithItems } from '@/lib/types/database'
+
+const currentTime = new Date()
+const greeting = currentTime.getHours() < 12 ? 'Good morning' : 
+                 currentTime.getHours() < 18 ? 'Good afternoon' : 'Good evening'
+const GreetingIconComponent = currentTime.getHours() < 18 ? Sun : Moon
+
+interface TodayData {
+  schedule: ScheduleWithDetails | null
+  currentActivity: ScheduleItem | null
+  upcomingActivities: ScheduleItem[]
+  stats?: {
+    totalItems: number
+    completedItems: number
+    completionRate: number
+    totalTimeBlocks: number
+    scheduledMinutes: number
+  }
+}
+
+const upcomingFeatures = [
+  {
+    icon: Target,
+    title: 'Current Focus',
+    description: 'Your current time block highlighted and ready to execute',
+    color: 'from-blue-500 to-blue-600'
+  },
+  {
+    icon: CheckCircle2,
+    title: 'Progress Tracking',
+    description: 'Check off completed tasks with satisfying animations',
+    color: 'from-green-500 to-green-600'
+  },
+  {
+    icon: Users,
+    title: 'Family Sync',
+    description: 'See your spouse\'s progress in real-time collaboration',
+    color: 'from-purple-500 to-purple-600'
+  }
+]
+
+const quickActions = [
+  {
+    title: 'Plan Your Week',
+    description: 'Drag templates onto your weekly schedule to create time-blocked days.',
+    icon: Calendar,
+    href: '/planning',
+    color: 'from-blue-500 to-blue-600',
+    actionText: 'Start Planning'
+  },
+  {
+    title: 'Quick Reference',
+    description: 'Access any template or checklist instantly, even without scheduling.',
+    icon: BookOpen,
+    href: '/sops',
+    color: 'from-green-500 to-green-600',
+    actionText: 'Browse SOPs'
+  }
+]
 
 export function TodayView() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [todayData, setTodayData] = useState<TodayData | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [focusMode, setFocusMode] = useState<{
+    isOpen: boolean
+    timeBlock: TimeBlockWithItems | null
+  }>({ isOpen: false, timeBlock: null })
   const router = useRouter()
   const supabase = createClient()
+  const { user: appUser } = useAppStore()
+
+  const fetchTodayData = async () => {
+    if (!appUser?.familyId) return
+    
+    try {
+      setRefreshing(true)
+      const response = await fetch('/api/today?includeStats=true', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setTodayData(data.data)
+      } else {
+        console.error('Failed to fetch today data:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error fetching today data:', error)
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const handleOpenFocusMode = (timeBlock: TimeBlockWithItems) => {
+    setFocusMode({ isOpen: true, timeBlock })
+  }
+
+  const handleCloseFocusMode = () => {
+    setFocusMode({ isOpen: false, timeBlock: null })
+  }
 
   useEffect(() => {
     const getUser = async () => {
@@ -24,11 +151,28 @@ export function TodayView() {
     getUser()
   }, [router])
 
+  useEffect(() => {
+    if (appUser?.familyId) {
+      fetchTodayData()
+    }
+  }, [appUser?.familyId])
+
+  // Auto-refresh every minute to update current time indicators
+  useEffect(() => {
+    if (!todayData) return
+    
+    const interval = setInterval(() => {
+      fetchTodayData()
+    }, 60000) // Refresh every minute
+    
+    return () => clearInterval(interval)
+  }, [todayData])
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-      </div>
+      <AppShell>
+        <TodayViewSkeleton />
+      </AppShell>
     )
   }
 
@@ -36,132 +180,322 @@ export function TodayView() {
     return null
   }
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+  const GreetingIcon = GreetingIconComponent
+
+  // Show welcome screen if no schedule data  
+  if (!todayData?.schedule?.time_blocks?.length) {
+    return (
+    <AppShell>
+      <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background">
+        {/* Hero Section with Greeting */}
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+          <div className="relative px-6 py-12">
+            <div className="max-w-7xl mx-auto">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="text-center mb-12"
+              >
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/30 rounded-2xl mb-6">
+                  <Clock className="h-10 w-10 text-primary" />
+                </div>
+                <div className="flex items-center justify-center space-x-2 mb-4">
+                  <GreetingIcon className="h-6 w-6 text-primary" />
+                  <h1 className="text-4xl sm:text-5xl font-bold text-foreground">
+                    {greeting}, {user.full_name?.split(' ')[0] || 'there'}!
+                  </h1>
+                </div>
+                <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+                  Your daily execution center will show your time-blocked schedule here. 
+                  Start by planning your week to see today's focused workflow.
+                </p>
+                <div className="flex items-center justify-center mt-8">
+                  <Badge variant="secondary" className="text-sm px-4 py-2">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Ready to Execute
+                  </Badge>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="px-6 pb-12">
+          <div className="max-w-7xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="grid lg:grid-cols-2 gap-8 mb-16"
+            >
+              {quickActions.map((action, index) => {
+                const Icon = action.icon
+                return (
+                  <Card key={index} className="border-border/50 shadow-lg group hover:shadow-xl transition-all duration-300">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0`}>
+                          <Icon className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="group-hover:text-primary transition-colors">
+                            {action.title}
+                          </CardTitle>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <CardDescription className="text-base mb-6">
+                        {action.description}
+                      </CardDescription>
+                      <Button asChild className="w-full group-hover:shadow-md transition-all">
+                        <Link href={action.href}>
+                          <Play className="w-4 h-4 mr-2" />
+                          {action.actionText}
+                          <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </motion.div>
+
+            {/* Future Features Preview */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <Card className="border-border/50 shadow-lg">
+                <CardHeader className="text-center pb-6">
+                  <CardTitle className="text-2xl font-bold">
+                    Coming to Your Daily View
+                  </CardTitle>
+                  <CardDescription className="text-lg">
+                    Advanced execution features that will transform your daily workflow
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid md:grid-cols-3 gap-6">
+                    {upcomingFeatures.map((feature, index) => {
+                      const Icon = feature.icon
+                      return (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
+                          className="text-center p-6 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-border/30 group hover:border-primary/30 transition-all"
+                        >
+                          <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center`}>
+                            <Icon className="w-8 h-8 text-white" />
+                          </div>
+                          <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                            {feature.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {feature.description}
+                          </p>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                  
+                  <Separator className="my-8" />
+                  
+                  <div className="text-center">
+                    <p className="text-muted-foreground mb-6 text-lg">
+                      Start building your perfect daily routine today. Every great execution begins with a solid plan.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                      <Button asChild size="lg" className="shadow-lg">
+                        <Link href="/planning">
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Create Your First Plan
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="lg" className="shadow-lg">
+                        <BookOpen className="w-4 h-4 mr-2" />
+                        Explore Templates
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </AppShell>
+    )
   }
 
+  // Main execution view with schedule data
+  const { stats, currentActivity } = todayData || {}
+  
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-bold text-gray-900">Itineraries</h1>
-              <nav className="hidden md:flex gap-6">
-                <Link href="/today" className="text-blue-600 font-medium border-b-2 border-blue-600 pb-1">
-                  Today
-                </Link>
-                <Link href="/planning" className="text-gray-600 hover:text-gray-900 pb-1">
-                  Planning
-                </Link>
-                <Link href="/sops" className="text-gray-600 hover:text-gray-900 pb-1">
-                  SOPs
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="hidden sm:inline text-sm text-gray-600">{user.email}</span>
-              <button 
-                onClick={handleSignOut}
-                className="text-sm text-gray-600 hover:text-gray-900"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Navigation */}
-      <nav className="md:hidden bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-around py-3">
-            <Link href="/today" className="flex flex-col items-center text-blue-600">
-              <span className="text-lg">⏰</span>
-              <span className="text-xs font-medium">Today</span>
-            </Link>
-            <Link href="/planning" className="flex flex-col items-center text-gray-600 hover:text-gray-900">
-              <span className="text-lg">📅</span>
-              <span className="text-xs">Planning</span>
-            </Link>
-            <Link href="/sops" className="flex flex-col items-center text-gray-600 hover:text-gray-900">
-              <span className="text-lg">📋</span>
-              <span className="text-xs">SOPs</span>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow p-8">
-          <div className="text-center">
-            <div className="text-6xl mb-6">⏰</div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Today's Schedule</h2>
-            <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-              Your daily execution view will appear here once you start planning your week. 
-              This is where you'll see your time-blocked schedule and check off completed tasks.
-            </p>
-            
-            <div className="grid gap-6 md:grid-cols-2 max-w-2xl mx-auto mb-8">
-              <div className="bg-blue-50 p-6 rounded-lg">
-                <div className="text-2xl mb-3">📅</div>
-                <h3 className="font-semibold text-gray-900 mb-2">Plan Your Week</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Drag templates onto your weekly schedule to create time-blocked days.
-                </p>
-                <Link 
-                  href="/planning" 
-                  className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+    <AppShell>
+      <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background">
+        {/* Header with current time and progress */}
+        <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
+          <div className="px-6 py-4">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <GreetingIcon className="h-5 w-5 text-primary" />
+                    <h1 className="text-2xl font-bold text-foreground">
+                      {greeting}, {user.full_name?.split(' ')[0] || 'there'}!
+                    </h1>
+                  </div>
+                  <CurrentTimeIndicator />
+                </div>
+                
+                {stats && (
+                  <div className="hidden md:flex items-center space-x-6">
+                    <div className="flex items-center space-x-2">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {stats.completedItems}/{stats.totalItems} completed
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {Math.round(stats.completionRate)}% done
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                <Button
+                  onClick={fetchTodayData}
+                  disabled={refreshing}
+                  variant="ghost"
+                  size="sm"
                 >
-                  Start Planning
-                </Link>
+                  <Clock className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Updating...' : 'Refresh'}
+                </Button>
               </div>
               
-              <div className="bg-green-50 p-6 rounded-lg">
-                <div className="text-2xl mb-3">📋</div>
-                <h3 className="font-semibold text-gray-900 mb-2">Quick Reference</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Access any template or checklist instantly, even without scheduling.
-                </p>
-                <Link 
-                  href="/sops" 
-                  className="inline-block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                >
-                  Browse SOPs
-                </Link>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 pt-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">What you'll see here:</h3>
-              <div className="grid gap-4 md:grid-cols-3 text-left">
-                <div className="flex items-start">
-                  <span className="text-2xl mr-3">🎯</span>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Current Focus</h4>
-                    <p className="text-sm text-gray-600">Your current time block highlighted</p>
+              {stats && (
+                <div className="mt-4">
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${stats.completionRate}%` }}
+                      transition={{ duration: 1, ease: 'easeOut' }}
+                      className="h-2 bg-gradient-to-r from-primary to-primary/80 rounded-full"
+                    />
                   </div>
                 </div>
-                <div className="flex items-start">
-                  <span className="text-2xl mr-3">✅</span>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Progress Tracking</h4>
-                    <p className="text-sm text-gray-600">Check off completed tasks</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <span className="text-2xl mr-3">👫</span>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Family Sync</h4>
-                    <p className="text-sm text-gray-600">See spouse's progress in real-time</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
-      </main>
-    </div>
+
+        {/* Current Activity Spotlight */}
+        <AnimatePresence>
+          {currentActivity && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="px-6 py-8"
+            >
+              <div className="max-w-6xl mx-auto">
+                <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                          <Focus className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-primary mb-1">Current Focus</p>
+                          <h3 className="text-xl font-bold text-foreground">{currentActivity.title}</h3>
+                          {currentActivity.description && (
+                            <p className="text-muted-foreground mt-1">{currentActivity.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="secondary" className="mb-2">
+                          <Star className="h-3 w-3 mr-1" />
+                          Active Now
+                        </Badge>
+                        <div className="text-sm text-muted-foreground">
+                          <Timer className="h-4 w-4 inline mr-1" />
+                          In progress
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Time Blocks */}
+        <div className="px-6 pb-12">
+          <div className="max-w-6xl mx-auto">
+            <div className="space-y-4">
+              {todayData.schedule.time_blocks.map((timeBlock, index) => {
+                const now = new Date()
+                const currentTime = now.toTimeString().split(' ')[0].slice(0, 5)
+                const isActive = currentTime >= timeBlock.start_time && currentTime <= timeBlock.end_time
+                
+                return (
+                  <ExecutionTimeBlock
+                    key={timeBlock.id}
+                    timeBlock={timeBlock as TimeBlockWithItems}
+                    date={todayData.schedule!.date}
+                    isActive={isActive}
+                    index={index}
+                    onOpenFocus={() => handleOpenFocusMode(timeBlock as TimeBlockWithItems)}
+                  />
+                )
+              })}
+            </div>
+            
+            {/* Empty State for No Time Blocks */}
+            {todayData.schedule.time_blocks.length === 0 && (
+              <Card className="border-dashed border-2 border-muted">
+                <CardContent className="p-12 text-center">
+                  <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    No time blocks scheduled
+                  </h3>
+                  <p className="text-muted-foreground mb-6">
+                    Add some time blocks to your schedule to start executing your day.
+                  </p>
+                  <Button asChild>
+                    <Link href="/planning">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Plan Your Day
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Focus Mode */}
+      {focusMode.timeBlock && (
+        <FocusMode
+          timeBlock={focusMode.timeBlock}
+          onClose={handleCloseFocusMode}
+          isOpen={focusMode.isOpen}
+        />
+      )}
+    </AppShell>
   )
 }

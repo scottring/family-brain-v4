@@ -8,6 +8,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24
 import { WeekCalendar } from './WeekCalendar'
 import { TemplateSidebar } from './TemplateSidebar'
 import { QuickAddModal } from './QuickAddModal'
+import { PlanningInitializer } from './PlanningInitializer'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
 import { useTemplateStore } from '@/lib/stores/useTemplateStore'
@@ -80,7 +81,8 @@ export function PlanningView() {
       }
     }
 
-    loadWeekSchedules()
+    // Call the function to load schedules
+    void loadWeekSchedules()
   }, [currentFamilyId, currentWeekStart, setWeekSchedule])
 
   const handlePreviousWeek = () => {
@@ -104,11 +106,12 @@ export function PlanningView() {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            No Family Selected
+            Setting up your family workspace...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Please select or create a family to start planning.
+            This will only take a moment
           </p>
         </div>
       </div>
@@ -117,6 +120,7 @@ export function PlanningView() {
 
   return (
     <DndProvider backend={HTML5Backend}>
+      <PlanningInitializer />
       <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">

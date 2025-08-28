@@ -166,7 +166,7 @@ export function QuickExecutionModal({
                 <div className="max-h-96 overflow-y-auto">
                   {!hasSteps ? (
                     <div className="p-8 text-center">
-                      <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <DocumentTextIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                         Simple Template
                       </h3>
