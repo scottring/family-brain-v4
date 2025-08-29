@@ -38,10 +38,18 @@ export class ScheduleService {
 
       if (!schedule) return null
 
-      // Then get time blocks
+      // Then get time blocks with assigned user profiles
       const { data: timeBlocks, error: blocksError } = await supabase
         .from('time_blocks')
-        .select('*')
+        .select(`
+          *,
+          assigned_user:user_profiles!assigned_to (
+            id,
+            email,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('schedule_id', schedule.id)
         .order('start_time', { ascending: true })
 
@@ -105,10 +113,18 @@ export class ScheduleService {
 
       const scheduleIds = schedules.map(s => s.id)
 
-      // Get all time blocks for these schedules
+      // Get all time blocks for these schedules with assigned users
       const { data: timeBlocks, error: blocksError } = await supabase
         .from('time_blocks')
-        .select('*')
+        .select(`
+          *,
+          assigned_user:user_profiles!assigned_to (
+            id,
+            email,
+            full_name,
+            avatar_url
+          )
+        `)
         .in('schedule_id', scheduleIds)
         .order('start_time', { ascending: true })
 
@@ -259,6 +275,7 @@ export class ScheduleService {
     data: {
       start_time?: string
       end_time?: string
+      assigned_to?: string | null
     }
   ): Promise<TimeBlock> {
     try {
@@ -618,10 +635,18 @@ export class ScheduleService {
 
       const scheduleIds = schedules.map(s => s.id)
 
-      // Get all time blocks for these schedules
+      // Get all time blocks for these schedules with assigned users
       const { data: timeBlocks, error: blocksError } = await supabase
         .from('time_blocks')
-        .select('*')
+        .select(`
+          *,
+          assigned_user:user_profiles!assigned_to (
+            id,
+            email,
+            full_name,
+            avatar_url
+          )
+        `)
         .in('schedule_id', scheduleIds)
         .order('start_time', { ascending: true })
 

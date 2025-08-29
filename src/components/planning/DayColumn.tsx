@@ -4,18 +4,21 @@ import { useState } from 'react'
 import { useDrop } from 'react-dnd'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { ScheduleWithTimeBlocks, TemplateWithSteps } from '@/lib/types/database'
-import { TimeBlock } from './TimeBlock'
+import { TimeBlockSimple } from './TimeBlockSimple'
 import { TimeSlotDropZone } from './TimeSlotDropZone'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { scheduleService } from '@/lib/services/ScheduleService'
 import { templateService } from '@/lib/services/TemplateService'
-import { timeToMinutes, minutesToTime } from '@/lib/utils'
+import { timeToMinutes, minutesToTime, calculateDuration } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface DayColumnProps {
   date: string
   schedule: ScheduleWithTimeBlocks | null
   timeSlots: string[]
+  selectedTimeBlockId?: string | null
+  onTimeBlockClick?: (timeBlockId: string) => void
 }
 
 interface DropResult {
@@ -23,7 +26,13 @@ interface DropResult {
   date: string
 }
 
-export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
+export function DayColumn({ 
+  date, 
+  schedule, 
+  timeSlots,
+  selectedTimeBlockId,
+  onTimeBlockClick 
+}: DayColumnProps) {
   const { currentFamilyId } = useAppStore()
   const { setWeekSchedule } = useScheduleStore()
   const [isDragOver, setIsDragOver] = useState(false)
@@ -152,6 +161,56 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
       console.error('Error creating quick item:', error)
     }
   }
+  
+  const moveTimeBlockToSlot = async (
+    timeBlock: any,
+    fromDate: string,
+    toTimeSlot: string
+  ) => {
+    if (!currentFamilyId) {
+      console.warn('Cannot move time block: missing familyId')
+      return
+    }
+    
+    console.log('Moving time block to new slot:', { 
+      timeBlock, 
+      fromDate, 
+      toDate: date, 
+      toTimeSlot 
+    })
+    
+    try {
+      // Calculate new times based on the target slot
+      const startMinutes = timeToMinutes(toTimeSlot)
+      const oldDuration = calculateDuration(timeBlock.start_time, timeBlock.end_time)
+      const endMinutes = startMinutes + oldDuration
+      const newEndTime = minutesToTime(endMinutes)
+      
+      // If moving to a different day, we need more complex logic
+      if (fromDate !== date) {
+        // For now, just update times on the same day
+        // TODO: Implement cross-day moves
+        toast.warning('Moving between days is not yet supported')
+        return
+      }
+      
+      // Update the time block with new times
+      await scheduleService.updateTimeBlock(timeBlock.id, {
+        start_time: toTimeSlot,
+        end_time: newEndTime
+      })
+      
+      // Reload the schedule
+      const updatedSchedule = await scheduleService.getScheduleForDate(currentFamilyId, date)
+      if (updatedSchedule) {
+        setWeekSchedule(date, updatedSchedule)
+        toast.success('Time block moved')
+      }
+    } catch (error) {
+      console.error('Error moving time block:', error)
+      toast.error('Failed to move time block')
+    }
+  }
 
   return (
     <div
@@ -169,6 +228,7 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
             date={date}
             isHour={timeSlot.endsWith(':00:00')}
             onDrop={(template) => createTimeBlockFromTemplate(template, timeSlot)}
+            onDropTimeBlock={(timeBlock, fromDate) => moveTimeBlockToSlot(timeBlock, fromDate, timeSlot)}
             onQuickAdd={() => handleQuickAdd(timeSlot)}
           />
         ))}
@@ -177,10 +237,12 @@ export function DayColumn({ date, schedule, timeSlots }: DayColumnProps) {
       {/* Time Blocks */}
       <div className="relative z-10">
         {schedule?.time_blocks?.map((timeBlock) => (
-          <TimeBlock
+          <TimeBlockSimple
             key={timeBlock.id}
             timeBlock={timeBlock}
             date={date}
+            isSelected={selectedTimeBlockId === timeBlock.id}
+            onClick={() => onTimeBlockClick?.(timeBlock.id)}
           />
         ))}
       </div>

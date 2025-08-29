@@ -57,8 +57,10 @@ export interface TimeBlock {
   schedule_id: string
   start_time: string // HH:MM format
   end_time: string // HH:MM format
+  assigned_to?: string | null // User ID of assigned family member
   created_at: string
   schedule_items?: ScheduleItem[]
+  assigned_user?: UserProfile // For when we join with user_profiles
 }
 
 export interface ScheduleItem {

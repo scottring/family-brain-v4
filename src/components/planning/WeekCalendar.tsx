@@ -2,9 +2,10 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { ScheduleWithTimeBlocks } from '@/lib/types/database'
+import { ScheduleWithTimeBlocks, TimeBlockWithItems } from '@/lib/types/database'
 import { DayColumn } from './DayColumn'
 import { TimeGutter } from './TimeGutter'
+import { TimeBlockDetailPanel } from './TimeBlockDetailPanel'
 import { getWeekRange, getTimeSlots, getCurrentTimeSlot, timeToMinutes } from '@/lib/utils'
 
 interface WeekCalendarProps {
@@ -16,6 +17,9 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
   const { dates } = getWeekRange(weekStart)
   const timeSlots = useMemo(() => getTimeSlots(5, 23), []) // 5 AM to 11 PM
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [selectedTimeBlockId, setSelectedTimeBlockId] = useState<string | null>(null)
+  const [selectedTimeBlock, setSelectedTimeBlock] = useState<TimeBlockWithItems | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string>('')
 
   // Update current time every minute
   useEffect(() => {
@@ -46,6 +50,25 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
   }
 
   const currentTimePosition = getCurrentTimePosition()
+  
+  // Handle time block selection
+  const handleTimeBlockClick = (timeBlockId: string, date: string) => {
+    setSelectedTimeBlockId(timeBlockId)
+    setSelectedDate(date)
+    
+    // Find the time block in schedules
+    const schedule = schedules[date]
+    if (schedule) {
+      const timeBlock = schedule.time_blocks.find(tb => tb.id === timeBlockId)
+      setSelectedTimeBlock(timeBlock || null)
+    }
+  }
+  
+  const handleClosePanel = () => {
+    setSelectedTimeBlockId(null)
+    setSelectedTimeBlock(null)
+    setSelectedDate('')
+  }
 
   return (
     <div className="h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -94,6 +117,8 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
                       date={dateStr}
                       schedule={schedules[dateStr]}
                       timeSlots={timeSlots}
+                      selectedTimeBlockId={selectedTimeBlockId}
+                      onTimeBlockClick={(timeBlockId) => handleTimeBlockClick(timeBlockId, dateStr)}
                     />
 
                     {/* Current Time Indicator - only show for today */}
@@ -124,6 +149,14 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
           </div>
         </div>
       </div>
+      
+      {/* Time Block Detail Panel */}
+      <TimeBlockDetailPanel
+        timeBlock={selectedTimeBlock}
+        date={selectedDate}
+        onClose={handleClosePanel}
+        isOpen={!!selectedTimeBlock}
+      />
     </div>
   )
 }

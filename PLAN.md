@@ -583,6 +583,267 @@ const createItem = async (data: unknown) => {
 - Version API endpoints if needed
 - Feature flags for gradual rollouts
 
+## Product Development Roadmap
+
+### Phase 1: Core App Polish (Current - Month 2)
+**Goal**: Nail the basics and create a delightful user experience
+
+#### Priorities:
+1. **Planning View Refinement**
+   - Improve item legibility in time slots
+   - Polish drag-and-drop interactions
+   - Enhance template management UI
+   - Mobile-responsive planning interface
+
+2. **Execution View Excellence**
+   - Smooth transitions and animations
+   - Intuitive gesture controls
+   - Focus mode for current tasks
+   - Clear progress indicators
+
+3. **Template System**
+   - Rich template editor
+   - Step-by-step procedures
+   - Template categories and search
+   - Quick template creation from existing schedules
+
+4. **Family Collaboration**
+   - Real-time sync refinement
+   - Visual indicators for family member activities
+   - Shared template library
+   - Permission management
+
+#### Success Metrics:
+- App loads in < 3s on 3G
+- Zero critical bugs
+- Intuitive enough for non-technical users
+- Works flawlessly offline
+
+### Phase 2: Google Calendar Integration via n8n (Month 3-4)
+**Goal**: Seamless integration with existing calendar workflows
+
+#### Architecture:
+```
+Your App ←→ n8n Workflows ←→ Google Calendar API
+              ↓
+        Webhook Events
+```
+
+#### n8n Workflows to Build:
+1. **Sync Time Blocks to Calendar**
+   - Trigger: Schedule created/updated in app
+   - Action: Create/update Google Calendar events
+   - Include template names in event titles
+   - Add checklist items to descriptions
+
+2. **Import from Google Calendar**
+   - Trigger: User-initiated or scheduled
+   - Action: Import events as time blocks
+   - Smart template matching based on event titles
+
+3. **Bi-directional Sync**
+   - Real-time updates via webhooks
+   - Conflict resolution (last-write-wins with UI)
+   - Sync status indicators
+
+4. **Recurring Events Handler**
+   - Map Google recurring events to template schedules
+   - Handle exceptions and modifications
+
+#### Implementation:
+- Self-hosted n8n on Railway/Render
+- OAuth 2.0 for Google Calendar
+- Webhook endpoints in Next.js app
+- Queue system for sync operations
+
+### Phase 3: User Testing & Data Collection (Month 4-6)
+**Goal**: Learn from real usage and refine based on feedback
+
+#### Focus Areas:
+1. **Onboard Beta Families**
+   - 10-20 active families
+   - Diverse use cases (kids, no kids, different schedules)
+   - Weekly feedback sessions
+
+2. **Analytics Implementation**
+   - Track feature usage
+   - Monitor completion rates
+   - Identify friction points
+   - Collect search queries (for future RAG)
+
+3. **Feature Refinement**
+   - Quick fixes based on feedback
+   - UI/UX improvements
+   - Performance optimizations
+   - Bug fixes
+
+4. **Content Building**
+   - Expand template library
+   - Document common patterns
+   - Build knowledge base
+
+#### Data to Collect for Future RAG:
+- Most used templates
+- Common modifications to templates
+- Search queries that return no results
+- Time patterns and correlations
+- Completion success factors
+
+### Phase 4: Intelligence Layer with RAG (Month 6+)
+**Goal**: Add smart features once we have data and proven patterns
+
+#### RAG Architecture:
+```
+Content Sources:
+├── Templates & SOPs
+├── Completed Schedules  
+├── User Patterns
+└── Family Preferences
+         ↓
+Vector Database (Supabase pgvector)
+         ↓
+Embedding Pipeline (OpenAI ada-002)
+         ↓
+Semantic Search & Retrieval
+         ↓
+LLM Integration (GPT-3.5/4)
+         ↓
+Smart Features
+```
+
+#### Smart Features to Add:
+1. **Intelligent Search**
+   - "Show me morning routines with kids"
+   - "What did we do last Tuesday evening?"
+   - "Find templates for meal prep"
+
+2. **Contextual Suggestions**
+   - Template recommendations based on time/day
+   - Smart scheduling based on patterns
+   - Conflict detection and resolution
+
+3. **Adaptive Learning**
+   - Learn from completion patterns
+   - Suggest optimizations
+   - Personalized templates
+
+4. **Natural Language Input**
+   - "Add grocery shopping at 2pm Saturday"
+   - "Schedule bedtime routine every night at 8"
+   - "Copy last week but skip the dentist appointment"
+
+#### Implementation Strategy:
+- Start with Supabase pgvector (free with existing setup)
+- Use OpenAI embeddings API (cost-effective)
+- Implement gradually with feature flags
+- A/B test smart features vs. basic
+
+## Integration Architecture
+
+### n8n Workflow Platform
+**Purpose**: Handle all external integrations without cluttering core app
+
+#### Setup Architecture:
+```
+┌─────────────────────────────────────────┐
+│           Next.js App                   │
+│         (Core Business Logic)           │
+└────────────┬────────────────────────────┘
+             │ Webhooks
+             ↓
+┌─────────────────────────────────────────┐
+│            n8n Instance                 │
+│     (Self-hosted or n8n.cloud)         │
+├─────────────────────────────────────────┤
+│  Workflows:                             │
+│  • Calendar Sync                        │
+│  • Email Notifications                  │
+│  • Data Exports                         │
+│  • Third-party Integrations             │
+└────────┬────────────────────────────────┘
+         │
+         ↓
+┌─────────────────────────────────────────┐
+│       External Services                 │
+│  • Google Calendar API                  │
+│  • SendGrid/Resend                      │
+│  • Slack/Discord                        │
+│  • Future: Apple Calendar, Outlook      │
+└─────────────────────────────────────────┘
+```
+
+#### Key Workflows:
+
+1. **Schedule to Calendar Sync**
+```javascript
+// Webhook from your app
+POST /webhooks/schedule-created
+{
+  scheduleId: "uuid",
+  familyId: "uuid",
+  date: "2024-03-15",
+  timeBlocks: [...]
+}
+
+// n8n processes and creates Google Calendar events
+// Returns calendar event IDs for linking
+```
+
+2. **Calendar Change Detection**
+```javascript
+// Google Calendar webhook → n8n → Your app
+// Handles moves, deletes, updates
+// Maintains sync state in your database
+```
+
+3. **Template Sharing Workflow**
+```javascript
+// Export template → Generate share link
+// Import shared template → Validate & save
+// Community template moderation
+```
+
+### Google Calendar Integration Details
+
+#### Data Mapping:
+```typescript
+// Your App Schema → Google Calendar Event
+{
+  timeBlock: {
+    id: "uuid",
+    start_time: "09:00",
+    end_time: "10:30",
+    schedule_items: [...]
+  }
+}
+→
+{
+  summary: "Morning Routine (3 tasks)",
+  start: { dateTime: "2024-03-15T09:00:00" },
+  end: { dateTime: "2024-03-15T10:30:00" },
+  description: "✓ Task 1\n✓ Task 2\n✓ Task 3",
+  extendedProperties: {
+    private: {
+      appId: "uuid",
+      templateId: "uuid"
+    }
+  }
+}
+```
+
+#### Sync Strategy:
+- **Push**: Real-time updates via webhooks
+- **Pull**: Hourly sync for changes made in Google Calendar
+- **Conflict Resolution**: Show both versions, user chooses
+- **Offline Queue**: Store changes, sync when online
+
+### Future Integration Possibilities:
+1. **Apple Calendar** via CalDAV
+2. **Microsoft Outlook** via Graph API
+3. **Todoist/Notion** for task management
+4. **IFTTT/Zapier** for automation
+5. **Home Assistant** for smart home triggers
+
 ## Scalability Considerations
 
 ### Horizontal Scaling
