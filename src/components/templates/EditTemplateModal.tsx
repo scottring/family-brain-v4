@@ -94,7 +94,7 @@ export function EditTemplateModal({
       {
         title: '',
         description: '',
-        step_type: 'checkbox' as StepType,
+        step_type: 'task' as StepType,
         order_position: steps.length,
         metadata: {}
       }
@@ -154,52 +154,93 @@ export function EditTemplateModal({
         let savedTemplate: TemplateWithSteps
         
         if (template?.id && !template.id.startsWith('temp-')) {
-          // Update existing template
-          savedTemplate = await templateService.updateTemplate(template.id, {
-            title,
-            description,
-            category
-          })
-          
-          // Update steps
-          // Remove deleted steps
-          const existingStepIds = template.template_steps.map(s => s.id)
-          const currentStepIds = steps.filter(s => s.id).map(s => s.id)
-          const stepsToDelete = existingStepIds.filter(id => !currentStepIds.includes(id!))
-          
-          for (const stepId of stepsToDelete) {
-            await templateService.deleteTemplateStep(stepId!)
-          }
-          
-          // Update or create steps
-          for (let i = 0; i < steps.length; i++) {
-            const step = steps[i]
-            if (step.id) {
-              await templateService.updateTemplateStep(step.id, {
-                title: step.title!,
-                description: step.description,
-                step_type: step.step_type!,
-                order_position: i,
-                metadata: step.metadata || {}
+          // Try to update existing template
+          let isNewTemplate = false
+          try {
+            savedTemplate = await templateService.updateTemplate(template.id, {
+              title,
+              description: description || undefined,
+              category
+            })
+          } catch (error: any) {
+            console.log('Caught error in updateTemplate:', {
+              code: error?.code,
+              message: error?.message,
+              details: error?.details
+            })
+            // If template doesn't exist (404 or PGRST116), create a new one
+            if (error?.code === 'PGRST116' || error?.message?.includes('0 rows') || error?.message?.includes('Cannot coerce')) {
+              console.log('Template not found, creating new one instead')
+              isNewTemplate = true
+              savedTemplate = await templateService.createTemplate({
+                family_id: currentFamilyId,
+                title,
+                description: description || undefined,
+                category
               })
             } else {
-              await templateService.createTemplateStep(template.id, {
+              throw error
+            }
+          }
+          
+          // Handle steps
+          if (isNewTemplate) {
+            // Add all steps to new template
+            for (let i = 0; i < steps.length; i++) {
+              const step = steps[i]
+              await templateService.createTemplateStep(savedTemplate.id, {
                 title: step.title!,
-                description: step.description,
+                description: step.description || undefined,
                 step_type: step.step_type!,
                 order_position: i,
                 metadata: step.metadata || {}
               })
             }
+          } else {
+            // Update steps for existing template
+            // Remove deleted steps
+            const existingStepIds = template.template_steps.map(s => s.id)
+            const currentStepIds = steps.filter(s => s.id).map(s => s.id)
+            const stepsToDelete = existingStepIds.filter(id => !currentStepIds.includes(id!))
+            
+            for (const stepId of stepsToDelete) {
+              await templateService.deleteTemplateStep(stepId!)
+            }
+            
+            // Update or create steps
+            for (let i = 0; i < steps.length; i++) {
+              const step = steps[i]
+              if (step.id) {
+                await templateService.updateTemplateStep(step.id, {
+                  title: step.title!,
+                  description: step.description || undefined,
+                  step_type: step.step_type!,
+                  order_position: i,
+                  metadata: step.metadata || {}
+                })
+              } else {
+                await templateService.createTemplateStep(savedTemplate.id, {
+                  title: step.title!,
+                  description: step.description || undefined,
+                  step_type: step.step_type!,
+                  order_position: i,
+                  metadata: step.metadata || {}
+                })
+              }
+            }
           }
           
           // Reload template with updated steps
-          savedTemplate = await templateService.getTemplateById(template.id)
+          const reloadedTemplate = await templateService.getTemplate(savedTemplate.id)
+          if (reloadedTemplate) {
+            savedTemplate = reloadedTemplate
+          }
         } else {
-          // Create new template
-          savedTemplate = await templateService.createTemplate(currentFamilyId, {
+          // Create new template (no ID at all)
+          savedTemplate = await templateService.createTemplate({
+            family_id: currentFamilyId,
             title,
-            description,
+            description: description || undefined,
             category
           })
           
@@ -208,7 +249,7 @@ export function EditTemplateModal({
             const step = steps[i]
             await templateService.createTemplateStep(savedTemplate.id, {
               title: step.title!,
-              description: step.description,
+              description: step.description || undefined,
               step_type: step.step_type!,
               order_position: i,
               metadata: step.metadata || {}
@@ -216,7 +257,10 @@ export function EditTemplateModal({
           }
           
           // Reload template with steps
-          savedTemplate = await templateService.getTemplateById(savedTemplate.id)
+          const reloadedTemplate = await templateService.getTemplate(savedTemplate.id)
+          if (reloadedTemplate) {
+            savedTemplate = reloadedTemplate
+          }
         }
         
         // Update local state

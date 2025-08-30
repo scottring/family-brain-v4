@@ -11,7 +11,9 @@ import {
   CheckCircleIcon,
   ListBulletIcon,
   PlusIcon,
-  ArrowsUpDownIcon
+  ArrowsUpDownIcon,
+  ClipboardDocumentCheckIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline'
 import { TimeBlockWithItems } from '@/lib/types/database'
 import { ScheduleItemCard } from './ScheduleItemCard'
@@ -322,10 +324,22 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
   const totalItems = timeBlock.schedule_items.length
   const completionRate = totalItems > 0 ? (completedItems.length / totalItems) * 100 : 0
   
+  // Check if this is a checklist/template
+  const hasChecklist = timeBlock.schedule_items.some(item => item.template_instance)
+  const checklistItem = timeBlock.schedule_items.find(item => item.template_instance)
+  const checklistSteps = checklistItem?.template_instance?.template_instance_steps || []
+  const completedSteps = checklistSteps.filter(step => step.completed_at)
+  
   // Get primary title (first item or time range)
   const primaryTitle = timeBlock.schedule_items[0]?.title || `Time Block`
   const hasMultipleItems = timeBlock.schedule_items.length > 1
   const additionalItemsCount = timeBlock.schedule_items.length - 1
+  
+  // Check for multiple assignees
+  const assignedUsers = timeBlock.schedule_items
+    .map(item => item.assigned_to)
+    .filter((id, index, self) => id && self.indexOf(id) === index)
+  const hasMultipleAssignees = assignedUsers.length > 1
   
   return (
     <>
@@ -340,11 +354,12 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
         onMouseEnter={() => setShowHoverCard(true)}
         onMouseLeave={() => setShowHoverCard(false)}
         className={cn(
-          "absolute left-1 right-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border group transition-all",
+          "absolute left-1 right-1 rounded-lg shadow-sm border group transition-all",
           "hover:shadow-lg hover:z-10",
-          isOver && canDrop
-            ? "border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800"
-            : "border-gray-200 dark:border-gray-700"
+          hasChecklist 
+            ? "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-700"
+            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700",
+          isOver && canDrop && "ring-2 ring-blue-400 dark:ring-blue-500"
         )}
         style={{
           top: `${topPosition}px`,
@@ -362,33 +377,54 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
 
         {/* Main Content */}
         <div className="h-full px-8 py-2 flex flex-col justify-center">
-          {/* Title - Most Prominent */}
-          <h3 className="text-base font-bold text-gray-900 dark:text-white line-clamp-2">
-            {primaryTitle}
-          </h3>
-          
-          {/* Secondary Info */}
-          <div className="flex items-center gap-3 mt-1">
-            {hasMultipleItems && (
-              <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                +{additionalItemsCount} more
-              </span>
+          <div className="flex items-start gap-2">
+            {/* Icon */}
+            {hasChecklist && (
+              <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
             )}
             
-            {/* Compact progress */}
-            {totalItems > 0 && (
-              <div className="flex items-center gap-1">
-                <div className="w-12 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-green-500 transition-all"
-                    style={{ width: `${completionRate}%` }}
-                  />
-                </div>
-                <span className="text-xs text-gray-600 dark:text-gray-400">
-                  {completedItems.length}/{totalItems}
-                </span>
+            <div className="flex-1 min-w-0">
+              {/* Title - Full display, no truncation */}
+              <h3 className={cn(
+                "font-bold text-gray-900 dark:text-white",
+                height > 60 ? "text-base" : "text-sm"
+              )}>
+                {primaryTitle}
+              </h3>
+              
+              {/* Checklist Progress or Item Count */}
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {hasChecklist && checklistSteps.length > 0 ? (
+                  <div className="flex items-center gap-1">
+                    <CheckCircleIcon className="h-3 w-3 text-green-500" />
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {completedSteps.length}/{checklistSteps.length} steps
+                    </span>
+                  </div>
+                ) : hasMultipleItems && (
+                  <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    +{additionalItemsCount} items
+                  </span>
+                )}
+                
+                {/* Multiple assignees indicator */}
+                {hasMultipleAssignees && (
+                  <div className="flex items-center gap-1">
+                    <UserGroupIcon className="h-3 w-3 text-gray-500" />
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      {assignedUsers.length} people
+                    </span>
+                  </div>
+                )}
+                
+                {/* Nested checklists indicator */}
+                {hasMultipleItems && hasChecklist && (
+                  <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                    Has sub-checklists
+                  </span>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 

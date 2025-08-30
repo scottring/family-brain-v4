@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
 import { 
   UserProfile, 
   Family, 
@@ -57,39 +56,30 @@ const initialState = {
   }
 }
 
-export const useAppStore = create<AppState>()(
-  devtools(
-    (set, get) => ({
-      ...initialState,
-      
-      setUser: (user) => set({ user }, false, 'setUser'),
-      
-      setFamilies: (families) => set({ families }, false, 'setFamilies'),
-      
-      setCurrentFamilyId: (familyId) => set({ currentFamilyId: familyId }, false, 'setCurrentFamilyId'),
-      
-      setCurrentFamilyMembers: (members) => set({ currentFamilyMembers: members }, false, 'setCurrentFamilyMembers'),
-      
-      setCurrentView: (view) => set({ currentView: view }, false, 'setCurrentView'),
-      
-      setIsMobile: (isMobile) => set({ isMobile }, false, 'setIsMobile'),
-      
-      setIsLoading: (isLoading) => set({ isLoading }, false, 'setIsLoading'),
+export const useAppStore = create<AppState>()((set) => ({
+  ...initialState,
+  
+  setUser: (user) => set({ user }),
+  
+  setFamilies: (families) => set({ families }),
+  
+  setCurrentFamilyId: (familyId) => set({ currentFamilyId: familyId }),
+  
+  setCurrentFamilyMembers: (members) => set({ currentFamilyMembers: members }),
+  
+  setCurrentView: (view) => set({ currentView: view }),
+  
+  setIsMobile: (isMobile) => set({ isMobile }),
+  
+  setIsLoading: (isLoading) => set({ isLoading }),
 
-      setIsInitializing: (isInitializing) => set({ isInitializing }, false, 'setIsInitializing'),
-      
-      updatePreferences: (newPreferences) => set(
-        state => ({
-          preferences: { ...state.preferences, ...newPreferences }
-        }),
-        false,
-        'updatePreferences'
-      ),
-      
-      reset: () => set(initialState, false, 'reset')
-    }),
-    {
-      name: 'app-store'
-    }
-  )
-)
+  setIsInitializing: (isInitializing) => set({ isInitializing }),
+  
+  updatePreferences: (newPreferences) => set(
+    state => ({
+      preferences: { ...state.preferences, ...newPreferences }
+    })
+  ),
+  
+  reset: () => set(initialState)
+}))

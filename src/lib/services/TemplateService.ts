@@ -102,7 +102,7 @@ export class TemplateService {
       color?: string
       created_by?: string
     }
-  ): Promise<Template> {
+  ): Promise<TemplateWithSteps> {
     try {
       const { data: template, error } = await this.supabase
         .from('templates')
@@ -111,7 +111,10 @@ export class TemplateService {
           version: 1,
           ...data
         })
-        .select()
+        .select(`
+          *,
+          template_steps (*)
+        `)
         .single()
 
       if (error) throw error
@@ -125,20 +128,71 @@ export class TemplateService {
   async updateTemplate(
     templateId: string,
     data: Partial<Pick<Template, 'title' | 'description' | 'category' | 'icon' | 'color'>>
-  ): Promise<Template> {
+  ): Promise<TemplateWithSteps> {
     try {
+      const { data: { user } } = await this.supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+      
+      // Filter out undefined values
+      const filteredData = Object.entries(data).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = value
+        }
+        return acc
+      }, {} as any)
+      
+      const updateData = {
+        ...filteredData,
+        updated_by: user.id,
+        updated_at: new Date().toISOString()
+      }
+      
+      console.log('Updating template with ID:', templateId)
+      console.log('Update data:', updateData)
+      
       const { data: template, error } = await this.supabase
         .from('templates')
-        .update(data)
+        .update(updateData)
         .eq('id', templateId)
-        .select()
+        .select(`
+          *,
+          template_steps (*)
+        `)
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error updating template:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          fullError: error
+        })
+        // Create a proper error object with the code
+        const err = new Error(error.message || 'Failed to update template') as any
+        err.code = error.code
+        err.details = error.details
+        throw err
+      }
+      
+      if (!template) {
+        throw new Error('No template returned after update')
+      }
+      
       return template
-    } catch (error) {
-      console.error('Error updating template:', error)
-      throw new Error('Failed to update template')
+    } catch (error: any) {
+      // Only log if it's not a "not found" error that we expect
+      if (error?.code !== 'PGRST116') {
+        console.error('Error updating template:', error)
+        console.error('Error details:', {
+          code: error?.code,
+          message: error?.message,
+          details: error?.details,
+          stack: error?.stack
+        })
+      }
+      // Re-throw the original error to preserve error code
+      throw error
     }
   }
 
@@ -188,7 +242,7 @@ export class TemplateService {
 
   async updateTemplateStep(
     stepId: string,
-    data: Partial<Pick<TemplateStep, 'title' | 'description' | 'order_position' | 'metadata'>>
+    data: Partial<Pick<TemplateStep, 'title' | 'description' | 'step_type' | 'order_position' | 'metadata'>>
   ): Promise<TemplateStep> {
     try {
       const { data: step, error } = await this.supabase

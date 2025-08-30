@@ -7,6 +7,7 @@ import { useAppStore } from '@/lib/stores/useAppStore'
 import { useTemplateStore } from '@/lib/stores/useTemplateStore'
 import { templateService } from '@/lib/services/TemplateService'
 import { TemplateCategory, StepType } from '@/lib/types/database'
+import { toast } from 'sonner'
 
 interface CreateTemplateModalProps {
   isOpen: boolean
@@ -34,10 +35,11 @@ const categoryLabels: Record<TemplateCategory, string> = {
 }
 
 const stepTypeLabels: Record<StepType, string> = {
-  action: 'Action',
-  check: 'Check',
+  task: 'Task',
   note: 'Note',
-  timer: 'Timer'
+  decision: 'Decision',
+  resource: 'Resource',
+  reference: 'Reference'
 }
 
 export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProps) {
@@ -95,8 +97,10 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
       // Reset form and close
       resetForm()
       onClose()
+      toast.success('Template created successfully!')
     } catch (error) {
       console.error('Error creating template:', error)
+      toast.error('Failed to save template. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -118,7 +122,7 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
       id: `temp-${Date.now()}`,
       title: '',
       description: '',
-      step_type: 'action'
+      step_type: 'task'
     }
     setSteps([...steps, newStep])
   }

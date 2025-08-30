@@ -6,6 +6,7 @@ import { ScheduleWithTimeBlocks, TimeBlockWithItems } from '@/lib/types/database
 import { DayColumn } from './DayColumn'
 import { TimeGutter } from './TimeGutter'
 import { TimeBlockDetailPanel } from './TimeBlockDetailPanel'
+import { ChecklistPanel } from './ChecklistPanel'
 import { getWeekRange, getTimeSlots, getCurrentTimeSlot, timeToMinutes } from '@/lib/utils'
 
 interface WeekCalendarProps {
@@ -20,6 +21,7 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
   const [selectedTimeBlockId, setSelectedTimeBlockId] = useState<string | null>(null)
   const [selectedTimeBlock, setSelectedTimeBlock] = useState<TimeBlockWithItems | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
+  const [panelType, setPanelType] = useState<'detail' | 'checklist'>('detail')
 
   // Update current time every minute
   useEffect(() => {
@@ -61,6 +63,10 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
     if (schedule) {
       const timeBlock = schedule.time_blocks.find(tb => tb.id === timeBlockId)
       setSelectedTimeBlock(timeBlock || null)
+      
+      // Determine which panel to show based on whether it has a checklist
+      const hasChecklist = timeBlock?.schedule_items.some(item => item.template_instance)
+      setPanelType(hasChecklist ? 'checklist' : 'detail')
     }
   }
   
@@ -68,6 +74,7 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
     setSelectedTimeBlockId(null)
     setSelectedTimeBlock(null)
     setSelectedDate('')
+    setPanelType('detail')
   }
 
   return (
@@ -150,13 +157,22 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
         </div>
       </div>
       
-      {/* Time Block Detail Panel */}
-      <TimeBlockDetailPanel
-        timeBlock={selectedTimeBlock}
-        date={selectedDate}
-        onClose={handleClosePanel}
-        isOpen={!!selectedTimeBlock}
-      />
+      {/* Time Block Detail Panel or Checklist Panel */}
+      {panelType === 'checklist' ? (
+        <ChecklistPanel
+          timeBlock={selectedTimeBlock}
+          date={selectedDate}
+          onClose={handleClosePanel}
+          isOpen={!!selectedTimeBlock}
+        />
+      ) : (
+        <TimeBlockDetailPanel
+          timeBlock={selectedTimeBlock}
+          date={selectedDate}
+          onClose={handleClosePanel}
+          isOpen={!!selectedTimeBlock}
+        />
+      )}
     </div>
   )
 }

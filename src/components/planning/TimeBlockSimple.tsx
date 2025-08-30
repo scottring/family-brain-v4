@@ -3,7 +3,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useDrag, useDrop } from 'react-dnd'
-import { Bars3Icon } from '@heroicons/react/24/outline'
+import { 
+  Bars3Icon,
+  ClipboardDocumentCheckIcon,
+  CheckCircleIcon,
+  UserGroupIcon
+} from '@heroicons/react/24/outline'
 import { TimeBlockWithItems } from '@/lib/types/database'
 import { timeToMinutes, calculateDuration, cn } from '@/lib/utils'
 import { scheduleService } from '@/lib/services/ScheduleService'
@@ -196,8 +201,26 @@ export function TimeBlockSimple({
   const itemCount = timeBlock.schedule_items.length
   const completedCount = timeBlock.schedule_items.filter(item => item.completed_at).length
   
+  // Check if this has a checklist
+  const hasChecklist = timeBlock.schedule_items.some(item => item.template_instance)
+  const checklistItem = timeBlock.schedule_items.find(item => item.template_instance)
+  const checklistSteps = checklistItem?.template_instance?.template_instance_steps || []
+  const completedSteps = checklistSteps.filter(step => step.completed_at)
+  
+  // Check for multiple assignees
+  const assignedUsers = timeBlock.schedule_items
+    .map(item => item.assigned_to)
+    .filter((id, index, self) => id && self.indexOf(id) === index)
+  const hasMultipleAssignees = assignedUsers.length > 1
+  
   // Determine color based on completion or type
   const getBlockColor = () => {
+    if (hasChecklist) {
+      if (isSelected) {
+        return 'bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border-blue-500 dark:border-blue-500 ring-2 ring-blue-400/50'
+      }
+      return 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600'
+    }
     if (completedCount === itemCount && itemCount > 0) {
       return 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700'
     }
@@ -236,30 +259,53 @@ export function TimeBlockSimple({
       
       {/* Content */}
       <div className="h-full px-3 py-1.5 flex items-center">
+        {/* Checklist Icon */}
+        {hasChecklist && (
+          <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0" />
+        )}
+        
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          {/* Title - show full if checklist, truncate otherwise */}
+          <p className={cn(
+            "font-medium text-gray-900 dark:text-white",
+            hasChecklist ? "text-sm font-semibold" : "text-sm truncate"
+          )}>
             {primaryTitle}
           </p>
-          <div className="flex items-center gap-2">
-            {itemCount > 1 && (
+          
+          {/* Status indicators */}
+          <div className="flex items-center gap-2 mt-0.5">
+            {hasChecklist && checklistSteps.length > 0 ? (
+              <div className="flex items-center gap-1">
+                <CheckCircleIcon className="h-3 w-3 text-green-500" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  {completedSteps.length}/{checklistSteps.length}
+                </span>
+              </div>
+            ) : itemCount > 1 && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {completedCount > 0 && `${completedCount}/`}{itemCount} items
               </p>
             )}
-            {timeBlock.assigned_user && (
+            
+            {/* Multiple assignees */}
+            {hasMultipleAssignees && (
+              <div className="flex items-center gap-0.5">
+                <UserGroupIcon className="h-3 w-3 text-gray-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">
+                  {assignedUsers.length}
+                </span>
+              </div>
+            )}
+            
+            {/* Single assignee */}
+            {!hasMultipleAssignees && timeBlock.assigned_user && (
               <p className="text-xs text-blue-600 dark:text-blue-400 truncate">
-                • {timeBlock.assigned_user.full_name || timeBlock.assigned_user.email?.split('@')[0]}
+                {timeBlock.assigned_user.full_name || timeBlock.assigned_user.email?.split('@')[0]}
               </p>
             )}
           </div>
         </div>
-        
-        {/* Time - only show if there's room */}
-        {height > 48 && (
-          <div className="text-xs text-gray-400 dark:text-gray-500 ml-2">
-            {timeBlock.start_time.slice(0, 5)}
-          </div>
-        )}
       </div>
       
       {/* Resize handle - bottom border on hover */}

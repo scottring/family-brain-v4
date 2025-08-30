@@ -68,10 +68,20 @@ export class ScheduleService {
         } as ScheduleWithTimeBlocks
       }
 
-      // Get schedule items without deep nesting
+      // Get schedule items with template instances
       const { data: scheduleItems, error: itemsError } = await supabase
         .from('schedule_items')
-        .select('*')
+        .select(`
+          *,
+          template_instance:template_instances (
+            *,
+            template:templates (*),
+            template_instance_steps (
+              *,
+              template_step:template_steps (*)
+            )
+          )
+        `)
         .in('time_block_id', timeBlockIds)
         .order('order_position', { ascending: true })
 
@@ -132,12 +142,22 @@ export class ScheduleService {
 
       const timeBlockIds = timeBlocks?.map(tb => tb.id) || []
       
-      // Get all schedule items if there are time blocks (simplified without deep nesting)
+      // Get all schedule items with template instances
       let scheduleItems: any[] = []
       if (timeBlockIds.length > 0) {
         const { data: items, error: itemsError } = await supabase
           .from('schedule_items')
-          .select('*')
+          .select(`
+            *,
+            template_instance:template_instances (
+              *,
+              template:templates (*),
+              template_instance_steps (
+                *,
+                template_step:template_steps (*)
+              )
+            )
+          `)
           .in('time_block_id', timeBlockIds)
           .order('order_position', { ascending: true })
 
@@ -332,10 +352,26 @@ export class ScheduleService {
           metadata: data.metadata || {},
           ...data
         })
-        .select()
+        .select('*')
         .single()
 
       if (error) throw error
+      
+      // If this is a template, create the template instance
+      if (data.template_id && item) {
+        const templateService = new (await import('./TemplateService')).TemplateService()
+        const instance = await templateService.createTemplateInstance(
+          data.template_id,
+          item.id
+        )
+        
+        // Return the item with the template instance
+        return {
+          ...item,
+          template_instance: instance
+        }
+      }
+      
       return item
     } catch (error) {
       console.error('Error creating schedule item:', error)
@@ -654,12 +690,22 @@ export class ScheduleService {
 
       const timeBlockIds = timeBlocks?.map(tb => tb.id) || []
       
-      // Get all schedule items if there are time blocks (simplified without deep nesting)
+      // Get all schedule items with template instances
       let scheduleItems: any[] = []
       if (timeBlockIds.length > 0) {
         const { data: items, error: itemsError } = await supabase
           .from('schedule_items')
-          .select('*')
+          .select(`
+            *,
+            template_instance:template_instances (
+              *,
+              template:templates (*),
+              template_instance_steps (
+                *,
+                template_step:template_steps (*)
+              )
+            )
+          `)
           .in('time_block_id', timeBlockIds)
           .order('order_position', { ascending: true })
 
