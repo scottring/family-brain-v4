@@ -283,12 +283,11 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
     
     try {
       // Recreate the time block
-      const restoredBlock = await scheduleService.createTimeBlock(deletedBlock.schedule_id, {
-        start_time: deletedBlock.start_time,
-        end_time: deletedBlock.end_time,
-        title: deletedBlock.title,
-        color: deletedBlock.color
-      })
+      const restoredBlock = await scheduleService.createTimeBlock(
+        deletedBlock.schedule_id, 
+        deletedBlock.start_time,
+        deletedBlock.end_time
+      )
       
       // Restore items if any
       if (deletedBlock.schedule_items && deletedBlock.schedule_items.length > 0) {
