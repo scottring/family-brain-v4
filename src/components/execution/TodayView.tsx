@@ -198,7 +198,7 @@ export function TodayView() {
     return todayData.schedule.time_blocks.map(timeBlock => ({
       ...timeBlock,
       schedule_items: filterItemsForMember(timeBlock.schedule_items || [])
-    })).filter(tb => tb.schedule_items && tb.schedule_items.length > 0)
+    })).filter(tb => tb.schedule_items && tb.schedule_items.length > 0) as TimeBlockWithItems[]
   }
 
   // Calculate stats for selected member
@@ -221,7 +221,7 @@ export function TodayView() {
     if (selectedMemberView === 'all') return 'Everyone'
     
     const member = currentFamilyMembers.find(m => m.user_id === selectedMemberView)
-    return member?.user?.full_name || 'Unknown'
+    return member?.user_profile?.full_name || 'Unknown'
   }
 
   useEffect(() => {
