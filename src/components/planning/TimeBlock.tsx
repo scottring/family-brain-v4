@@ -294,7 +294,7 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
         for (const item of deletedBlock.schedule_items) {
           await scheduleService.createScheduleItem(restoredBlock.id, {
             title: item.title,
-            description: item.description,
+            description: item.description || undefined,
             item_type: item.item_type,
             template_id: item.template_id,
             order_position: item.order_position,
