@@ -100,7 +100,7 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
     const schedule = filteredSchedules[date]
     if (schedule) {
       const timeBlock = schedule.time_blocks.find(tb => tb.id === timeBlockId)
-      setSelectedTimeBlock(timeBlock || null)
+      setSelectedTimeBlock(timeBlock as TimeBlockWithItems || null)
       
       // Determine which panel to show based on whether it has a checklist
       const hasChecklist = timeBlock?.schedule_items.some(item => item.template_instance)

@@ -46,7 +46,7 @@ const CATEGORY_OPTIONS: { value: TemplateCategory; label: string; icon: string }
   { value: 'custom', label: 'Custom', icon: '📝' }
 ]
 
-const STEP_TYPE_OPTIONS: { value: StepType; label: string; icon: JSX.Element; description: string }[] = [
+const STEP_TYPE_OPTIONS: { value: StepType; label: string; icon: React.ReactElement; description: string }[] = [
   { 
     value: 'task', 
     label: 'Task', 
@@ -222,6 +222,7 @@ export function TemplateEditor({ template, isOpen, onClose, onSave, isNew = fals
         version: 1,
         family_id: template?.family_id || null,
         created_by: template?.created_by || null,
+        updated_by: null,
         created_at: template?.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
         template_steps: steps.map((step, index) => ({

@@ -139,8 +139,12 @@ export function EditTemplateModal({
           title: `${title} (Modified)`,
           description,
           category,
-          is_active: true,
+          is_system: false,
+          icon: null,
+          color: null,
           created_by: '',
+          updated_by: null,
+          version: 1,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           template_steps: steps as TemplateStep[]

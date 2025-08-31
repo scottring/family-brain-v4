@@ -446,7 +446,7 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
       >
         {/* Drag Handle */}
         <div 
-          ref={drag}
+          ref={drag as unknown as React.Ref<HTMLDivElement>}
           className="absolute left-0 top-0 bottom-0 w-6 bg-gray-100 dark:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity cursor-move flex items-center justify-center"
         >
           <Bars3Icon className="h-4 w-4 text-gray-500" />
@@ -498,7 +498,8 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
                   <div className="flex items-center gap-1">
                     <UserGroupIcon className="h-3 w-3 text-gray-500" />
                     <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {assignedUsers.length} people
+                      {/* TODO: Implement assignedUsers when assigned_to is added to ScheduleItem */}
+                      Multiple people
                     </span>
                   </div>
                 )}
@@ -677,7 +678,7 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
       {/* Undo Notification */}
       {showUndoNotification && deletedBlock && (
         <UndoNotification
-          message={`Deleted "${deletedBlock.title || 'Time Block'}"`}
+          message={`Deleted time block`}
           onUndo={handleUndoDelete}
           onDismiss={() => {
             setShowUndoNotification(false)

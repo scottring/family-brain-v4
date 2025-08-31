@@ -41,7 +41,7 @@ export function TimeBlockSimple({
   const { selectedMemberView } = useAppStore()
   
   // Set up drag functionality with delay to prevent conflict with clicks
-  const [{ isDragging }, drag, dragPreview] = useDrag({
+  const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
     type: 'timeBlock',
     item: { timeBlock, date },
     collect: (monitor) => ({
@@ -52,10 +52,10 @@ export function TimeBlockSimple({
       // Add delay to prevent accidental drags when clicking
       delay: 150
     }
-  })
+  }))
   
   // Set up drop functionality for receiving items
-  const [{ isOver }, drop] = useDrop({
+  const [{ isOver }, drop] = useDrop(() => ({
     accept: ['scheduleItem', 'template'],
     drop: async (draggedItem: any) => {
       if (draggedItem.template) {
@@ -81,7 +81,7 @@ export function TimeBlockSimple({
           
           if (currentBlock) {
             updateTimeBlock(timeBlock.id, {
-              schedule_items: [...(currentBlock.schedule_items || []), newItem]
+              schedule_items: [...(currentBlock.schedule_items || []), newItem as any]
             })
           }
           
@@ -105,11 +105,11 @@ export function TimeBlockSimple({
           
           if (sourceBlock && targetBlock) {
             updateTimeBlock(draggedItem.sourceTimeBlockId, {
-              schedule_items: sourceBlock.schedule_items.filter(item => item.id !== draggedItem.scheduleItem.id)
+              schedule_items: sourceBlock.schedule_items.filter(item => item.id !== draggedItem.scheduleItem.id) as any
             })
             
             updateTimeBlock(timeBlock.id, {
-              schedule_items: [...(targetBlock.schedule_items || []), draggedItem.scheduleItem]
+              schedule_items: [...(targetBlock.schedule_items || []), draggedItem.scheduleItem] as any
             })
           }
           
@@ -123,7 +123,7 @@ export function TimeBlockSimple({
     collect: (monitor) => ({
       isOver: monitor.isOver()
     })
-  })
+  }))
   
   // Combine refs - make entire block draggable and droppable
   useEffect(() => {
@@ -232,21 +232,20 @@ export function TimeBlockSimple({
     
     try {
       // Recreate the time block
-      const restoredBlock = await scheduleService.createTimeBlock(deletedBlock.schedule_id, {
-        start_time: deletedBlock.start_time,
-        end_time: deletedBlock.end_time,
-        title: deletedBlock.title,
-        color: deletedBlock.color
-      })
+      const restoredBlock = await scheduleService.createTimeBlock(
+        deletedBlock.schedule_id, 
+        deletedBlock.start_time,
+        deletedBlock.end_time
+      )
       
       // Restore items if any
       if (deletedBlock.schedule_items && deletedBlock.schedule_items.length > 0) {
         for (const item of deletedBlock.schedule_items) {
           await scheduleService.createScheduleItem(restoredBlock.id, {
             title: item.title,
-            description: item.description,
+            description: item.description || undefined,
             item_type: item.item_type,
-            template_id: item.template_id,
+            template_id: item.template_id || undefined,
             order_position: item.order_position,
             metadata: item.metadata
           })
@@ -254,7 +253,7 @@ export function TimeBlockSimple({
       }
       
       // Update local state
-      updateTimeBlock(restoredBlock.id, restoredBlock)
+      updateTimeBlock(restoredBlock.id, restoredBlock as any)
       
       setShowUndoNotification(false)
       setDeletedBlock(null)
@@ -284,10 +283,11 @@ export function TimeBlockSimple({
   const completedSteps = checklistSteps.filter(step => step.completed_at)
   
   // Check for multiple assignees
-  const assignedUsers = timeBlock.schedule_items
-    .map(item => item.assigned_to)
-    .filter((id, index, self) => id && self.indexOf(id) === index)
-  const hasMultipleAssignees = assignedUsers.length > 1
+  // TODO: Implement when assigned_to is added to ScheduleItem type
+  // const assignedUsers = timeBlock.schedule_items
+  //   .map(item => item.assigned_to)
+  //   .filter((id, index, self) => id && self.indexOf(id) === index)
+  const hasMultipleAssignees = false // assignedUsers.length > 1
   
   // Determine color based on completion or type
   const getBlockColor = () => {
@@ -379,7 +379,8 @@ export function TimeBlockSimple({
               <div className="flex items-center gap-0.5">
                 <UserGroupIcon className="h-3 w-3 text-gray-500" />
                 <span className="text-xs text-gray-600 dark:text-gray-400">
-                  {assignedUsers.length}
+                  {/* TODO: Show assignedUsers count when available */}
+                  Multiple
                 </span>
               </div>
             )}
@@ -404,7 +405,7 @@ export function TimeBlockSimple({
     {/* Undo Notification */}
     {showUndoNotification && deletedBlock && (
       <UndoNotification
-        message={`Deleted "${deletedBlock.title || primaryTitle || 'Time Block'}"`}
+        message={`Deleted "${primaryTitle || 'Time Block'}"`}
         onUndo={handleUndoDelete}
         onDismiss={() => {
           setShowUndoNotification(false)

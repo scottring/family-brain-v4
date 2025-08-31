@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { trackingService } from '@/lib/services/TrackingService'
 import { useAppStore } from '@/lib/stores/useAppStore'
-import { toast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 
 interface TrackingGoalModalProps {
   open: boolean
@@ -40,7 +40,7 @@ export function TrackingGoalModal({
   templateTitle,
   onSuccess
 }: TrackingGoalModalProps) {
-  const { currentFamilyId, familyMembers } = useAppStore()
+  const { currentFamilyId, currentFamilyMembers } = useAppStore()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     goalType: 'count_in_period' as 'streak' | 'count_in_period' | 'daily',
@@ -59,29 +59,22 @@ export function TrackingGoalModal({
       const result = await trackingService.createGoal({
         family_id: currentFamilyId,
         template_id: templateId,
-        member_id: formData.memberId || undefined,
+        member_id: formData.memberId || null,
         goal_type: formData.goalType,
         target_count: formData.targetCount,
         period_days: formData.periodDays,
-        reward_description: formData.rewardDescription || undefined,
+        reward_description: formData.rewardDescription || null,
         reward_emoji: formData.rewardEmoji || '🎁',
         is_active: true
       })
 
-      toast({
-        title: 'Tracking goal created',
-        description: `Now tracking ${templateTitle}`,
-      })
+      toast.success(`Now tracking ${templateTitle}`)
 
       onOpenChange(false)
       onSuccess?.()
     } catch (error) {
       console.error('Error creating tracking goal:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to create tracking goal',
-        variant: 'destructive'
-      })
+      toast.error('Failed to create tracking goal')
     } finally {
       setLoading(false)
     }
@@ -126,9 +119,9 @@ export function TrackingGoalModal({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All family members</SelectItem>
-                {familyMembers.map((member) => (
+                {currentFamilyMembers.map((member) => (
                   <SelectItem key={member.id} value={member.id}>
-                    {member.full_name}
+                    {member.user_profile.full_name || 'Unknown'}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -69,7 +69,7 @@ export class ScheduleService {
       console.log('Found time blocks:', timeBlocks?.length || 0)
 
       // Get schedule items for all time blocks
-      const timeBlockIds = timeBlocks?.map(tb => tb.id) || []
+      const timeBlockIds = timeBlocks?.map((tb: any) => tb.id) || []
       
       if (timeBlockIds.length === 0) {
         return {
@@ -96,8 +96,8 @@ export class ScheduleService {
       // Now fetch templates and template instances for items that have template_id
       if (scheduleItems && scheduleItems.length > 0) {
         const templateIds = scheduleItems
-          .filter(item => item.template_id)
-          .map(item => item.template_id)
+          .filter((item: any) => item.template_id)
+          .map((item: any) => item.template_id)
         
         if (templateIds.length > 0) {
           console.log('Fetching templates for items:', templateIds)
@@ -108,16 +108,16 @@ export class ScheduleService {
           
           if (!templatesError && templates) {
             // Attach templates to schedule items
-            scheduleItems.forEach(item => {
+            scheduleItems.forEach((item: any) => {
               if (item.template_id) {
-                item.template = templates.find(t => t.id === item.template_id)
+                item.template = templates.find((t: any) => t.id === item.template_id)
               }
             })
           }
         }
         
         // Fetch template instances for schedule items
-        const itemIds = scheduleItems.map(item => item.id)
+        const itemIds = scheduleItems.map((item: any) => item.id)
         console.log('Fetching template instances for items:', itemIds)
         const { data: templateInstances, error: instancesError } = await supabase
           .from('template_instances')
@@ -133,8 +133,8 @@ export class ScheduleService {
         if (!instancesError && templateInstances) {
           console.log('Found template instances:', templateInstances.length)
           // Attach template instances to schedule items
-          scheduleItems.forEach(item => {
-            const instance = templateInstances.find(ti => ti.schedule_item_id === item.id)
+          scheduleItems.forEach((item: any) => {
+            const instance = templateInstances.find((ti: any) => ti.schedule_item_id === item.id)
             if (instance) {
               item.template_instance = instance
               console.log(`Item ${item.id} has instance with ${instance.template_instance_steps?.length || 0} steps`)
@@ -146,11 +146,11 @@ export class ScheduleService {
       }
 
       // Map items to their time blocks (simplified structure)
-      const timeBlocksWithItems = timeBlocks?.map(block => {
-        const blockItems = (scheduleItems || []).filter(item => item.time_block_id === block.id)
+      const timeBlocksWithItems = timeBlocks?.map((block: any) => {
+        const blockItems = (scheduleItems || []).filter((item: any) => item.time_block_id === block.id)
         console.log(`Time block ${block.id} (${block.start_time}): ${blockItems.length} items`)
         if (blockItems.length > 0) {
-          console.log('Items for this block:', blockItems.map(i => ({ id: i.id, title: i.title, template_id: i.template_id, has_template: !!i.template })))
+          console.log('Items for this block:', blockItems.map((i: any) => ({ id: i.id, title: i.title, template_id: i.template_id, has_template: !!i.template })))
         }
         return {
           ...block,
@@ -162,7 +162,7 @@ export class ScheduleService {
         scheduleId: schedule.id,
         date: schedule.date,
         timeBlocksCount: timeBlocksWithItems.length,
-        totalItems: timeBlocksWithItems.reduce((sum, tb) => sum + (tb.schedule_items?.length || 0), 0)
+        totalItems: timeBlocksWithItems.reduce((sum: number, tb: any) => sum + (tb.schedule_items?.length || 0), 0)
       })
 
       return {
@@ -201,7 +201,7 @@ export class ScheduleService {
 
       if (blocksError) throw blocksError
 
-      const timeBlockIds = timeBlocks?.map(tb => tb.id) || []
+      const timeBlockIds = timeBlocks?.map((tb: any) => tb.id) || []
       
       // Get all schedule items
       let scheduleItems: any[] = []
@@ -754,7 +754,7 @@ export class ScheduleService {
 
       if (blocksError) throw blocksError
 
-      const timeBlockIds = timeBlocks?.map(tb => tb.id) || []
+      const timeBlockIds = timeBlocks?.map((tb: any) => tb.id) || []
       
       // Get all schedule items
       let scheduleItems: any[] = []

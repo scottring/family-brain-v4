@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpenIcon,
-  ClipboardListIcon,
+  ClipboardDocumentListIcon,
   ChevronRightIcon,
   ChevronDownIcon,
   CheckCircleIcon,
