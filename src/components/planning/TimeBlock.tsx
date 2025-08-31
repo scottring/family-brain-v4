@@ -221,12 +221,12 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
           if (sourceBlock && targetBlock) {
             // Remove from source
             updateTimeBlock(draggedItem.sourceTimeBlockId, {
-              schedule_items: sourceBlock.schedule_items.filter(item => item.id !== draggedItem.scheduleItem.id)
+              schedule_items: sourceBlock.schedule_items.filter(item => item.id !== draggedItem.scheduleItem.id) as ScheduleItemWithTemplate[]
             })
             
             // Add to target
             updateTimeBlock(timeBlock.id, {
-              schedule_items: [...(targetBlock.schedule_items || []), draggedItem.scheduleItem]
+              schedule_items: [...(targetBlock.schedule_items || []), draggedItem.scheduleItem] as ScheduleItemWithTemplate[]
             })
           }
           
