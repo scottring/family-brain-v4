@@ -303,8 +303,11 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
         }
       }
       
-      // Update local state
-      updateTimeBlock(restoredBlock.id, restoredBlock)
+      // Update local state with restored items
+      updateTimeBlock(restoredBlock.id, {
+        ...restoredBlock,
+        schedule_items: deletedBlock.schedule_items || []
+      } as TimeBlockWithItems)
       
       setShowUndoNotification(false)
       setDeletedBlock(null)
