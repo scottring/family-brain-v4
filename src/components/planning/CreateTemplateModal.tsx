@@ -20,6 +20,7 @@ interface TemplateStepData {
   title: string
   description: string
   step_type: StepType
+  metadata?: any
 }
 
 const categoryLabels: Record<TemplateCategory, string> = {
@@ -82,7 +83,8 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
           title: step.title,
           description: step.description || undefined,
           step_type: step.step_type,
-          order_position: index
+          order_position: index,
+          metadata: step.metadata || {}
         })
       )
 
@@ -303,6 +305,11 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
                               </div>
                               
                               <div className="flex-1 space-y-3">
+                                {step.metadata?.section && (
+                                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                    Section: {step.metadata.section}
+                                  </div>
+                                )}
                                 <input
                                   type="text"
                                   placeholder="Step title"
@@ -394,22 +401,15 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
       isOpen={showBulkAdd}
       onClose={() => setShowBulkAdd(false)}
       onAdd={(newSteps) => {
-        const formattedSteps = newSteps.map(() => ({
-          id: Date.now().toString() + Math.random(),
-          title: '',
-          description: '',
-          step_type: 'task' as StepType
-        }))
-        
-        // Update the formatted steps with the actual data
-        const finalSteps = newSteps.map((step, index) => ({
+        const formattedSteps = newSteps.map((step, index) => ({
           id: Date.now().toString() + Math.random() + index,
           title: step.title,
-          description: step.description,
-          step_type: 'task' as StepType
+          description: step.description || '',
+          step_type: 'task' as StepType,
+          metadata: step.metadata || {}
         }))
         
-        setSteps([...steps, ...finalSteps])
+        setSteps([...steps, ...formattedSteps])
       }}
     />
     </>

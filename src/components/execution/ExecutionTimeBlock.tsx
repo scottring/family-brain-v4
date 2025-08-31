@@ -41,7 +41,9 @@ const ExecutionTimeBlock = memo(function ExecutionTimeBlock({
   const { expandedItems, toggleExpandedItem, setArtifactPanelItemId } = useScheduleStore()
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining(timeBlock.end_time))
   
-  const isExpanded = expandedItems.has(timeBlock.id)
+  // Start expanded by default for blocks with items
+  const [localExpanded, setLocalExpanded] = useState(timeBlock.schedule_items.length > 0)
+  const isExpanded = expandedItems.has(timeBlock.id) ? expandedItems.has(timeBlock.id) : localExpanded
   const timeStatus = getTimeStatus(date, timeBlock.start_time, timeBlock.end_time)
   
   const completedItems = timeBlock.schedule_items.filter(item => item.completed_at)
@@ -49,6 +51,18 @@ const ExecutionTimeBlock = memo(function ExecutionTimeBlock({
   const completionRate = totalItems > 0 ? (completedItems.length / totalItems) * 100 : 0
   const isFullyCompleted = totalItems > 0 && completedItems.length === totalItems
   const duration = calculateDuration(timeBlock.start_time, timeBlock.end_time)
+  
+  // Debug logging
+  console.log(`ExecutionTimeBlock: ${timeBlock.start_time}-${timeBlock.end_time}`, {
+    id: timeBlock.id,
+    totalItems,
+    items: timeBlock.schedule_items.map(item => ({
+      id: item.id,
+      title: item.title,
+      template_id: item.template_id,
+      template: item.template
+    }))
+  })
   
   // Update time remaining every second for current time blocks
   useEffect(() => {

@@ -209,7 +209,7 @@ function DraggableTemplate({ template }: DraggableTemplateProps) {
     })
   })
 
-  const hasSteps = template.template_steps.length > 0
+  const hasSteps = template.template_steps?.length > 0
   const IconComponent = hasSteps ? ListBulletIcon : DocumentTextIcon
 
   const handleDelete = async () => {
@@ -294,7 +294,7 @@ function DraggableTemplate({ template }: DraggableTemplateProps) {
               
               {hasSteps && (
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {template.template_steps.length} steps
+                  {template.template_steps?.length || 0} steps
                 </span>
               )}
               

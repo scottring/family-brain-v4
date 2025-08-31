@@ -14,7 +14,8 @@ import {
   User,
   LogOut,
   ChevronRight,
-  Home
+  Home,
+  CheckSquare
 } from 'lucide-react'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { ArtifactPanel } from './ArtifactPanel'
@@ -53,7 +54,15 @@ const navItems: NavItem[] = [
     label: 'Today',
     href: '/today',
     icon: Clock,
-    description: 'Execute your current schedule',
+    description: 'Dashboard and overview',
+    badge: 'Home'
+  },
+  {
+    id: 'itinerary',
+    label: 'Itinerary',
+    href: '/itinerary',
+    icon: CheckSquare,
+    description: 'Execute your daily schedule',
     badge: 'Active'
   },
   {

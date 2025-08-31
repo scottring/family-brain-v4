@@ -419,6 +419,11 @@ export function EditTemplateModal({
                   <GripVertical className="h-5 w-5 text-gray-400 mt-1" />
                   
                   <div className="flex-1 space-y-2">
+                    {step.metadata?.section && (
+                      <div className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                        Section: {step.metadata.section}
+                      </div>
+                    )}
                     <Input
                       value={step.title || ''}
                       onChange={(e) => handleStepChange(index, 'title', e.target.value)}
@@ -514,7 +519,7 @@ export function EditTemplateModal({
           description: step.description,
           step_type: 'task' as StepType,
           order_position: steps.length + index,
-          metadata: {}
+          metadata: step.metadata || {}
         }))
         setSteps([...steps, ...formattedSteps])
       }}

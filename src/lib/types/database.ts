@@ -184,6 +184,7 @@ export interface TimeBlockWithItems extends TimeBlock {
 
 export interface ScheduleItemWithTemplate extends ScheduleItem {
   template_instance?: TemplateInstanceWithSteps
+  template?: Template & { template_steps?: TemplateStep[] }
 }
 
 export interface TemplateInstanceWithSteps extends TemplateInstance {

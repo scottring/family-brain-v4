@@ -54,7 +54,12 @@ export class TemplateService {
         return newData as TemplateWithSteps[] || []
       }
       
-      return data as TemplateWithSteps[] || []
+      // Ensure each template has template_steps array
+      const templates = (data as TemplateWithSteps[]) || []
+      return templates.map(template => ({
+        ...template,
+        template_steps: template.template_steps || []
+      }))
     } catch (error) {
       console.error('Error fetching templates:', error)
       return [] // Return empty array instead of throwing
@@ -82,7 +87,12 @@ export class TemplateService {
       const { data, error } = await query
 
       if (error) throw error
-      return data as TemplateWithSteps[] || []
+      // Ensure each template has template_steps array
+      const templates = (data as TemplateWithSteps[]) || []
+      return templates.map(template => ({
+        ...template,
+        template_steps: template.template_steps || []
+      }))
     } catch (error) {
       console.error('Error fetching templates by category:', error)
       throw new Error('Failed to fetch templates')
@@ -433,13 +443,74 @@ export class TemplateService {
     customizations?: Record<string, any>
   ): Promise<TemplateInstance> {
     try {
-      const { data: instance, error } = await this.supabase
+      // First check if a template instance already exists for this schedule item
+      const { data: existingInstance, error: checkError } = await this.supabase
+        .from('template_instances')
+        .select('*')
+        .eq('schedule_item_id', scheduleItemId)
+        .maybeSingle()  // Use maybeSingle() to avoid error when no row exists
+
+      if (existingInstance) {
+        console.log('Template instance already exists for schedule item:', scheduleItemId)
+        // Update the existing instance instead of creating a new one
+        const { data: updatedInstance, error: updateError } = await this.supabase
+          .from('template_instances')
+          .update({
+            template_id: templateId,
+            customizations: customizations || {}
+          })
+          .eq('id', existingInstance.id)
+          .select('id')
+          .single()
+
+        if (updateError) {
+          console.error('Error updating template instance:', updateError)
+          throw updateError
+        }
+
+        return updatedInstance as TemplateInstance
+      }
+
+      // No existing instance, create a new one
+      const { data: insertedData, error: insertError } = await this.supabase
         .from('template_instances')
         .insert({
           template_id: templateId,
           schedule_item_id: scheduleItemId,
           customizations: customizations || {}
         })
+        .select('id')
+        .single()
+
+      if (insertError) {
+        // Handle duplicate key error gracefully
+        if (insertError.code === '23505') {
+          console.log('Template instance already exists (race condition), fetching existing')
+          const { data: existing } = await this.supabase
+            .from('template_instances')
+            .select('*')
+            .eq('schedule_item_id', scheduleItemId)
+            .single()
+          
+          if (existing) {
+            return existing as TemplateInstance
+          }
+        }
+        
+        console.error('Error inserting template instance:', JSON.stringify(insertError, null, 2))
+        throw insertError
+      }
+
+      if (!insertedData || !insertedData.id) {
+        console.error('No ID returned from insert:', insertedData)
+        throw new Error('Failed to create template instance - no ID returned')
+      }
+
+      console.log('Successfully inserted template instance with ID:', insertedData.id)
+
+      // Now fetch the complete instance with relations
+      const { data: instance, error } = await this.supabase
+        .from('template_instances')
         .select(`
           *,
           template:templates (*),
@@ -448,11 +519,13 @@ export class TemplateService {
             template_step:template_steps (*)
           )
         `)
+        .eq('id', insertedData.id)
         .single()
 
       if (error) {
-        console.error('Error inserting template instance:', error)
-        throw error
+        console.error('Error fetching template instance after insert:', error)
+        // Return a minimal instance if fetch fails but insert succeeded
+        return insertedData as TemplateInstance
       }
 
       // Create instance steps for all template steps with assignee support
@@ -518,12 +591,10 @@ export class TemplateService {
       
       return completeInstance as TemplateInstance
     } catch (error: any) {
-      console.error('Error creating template instance:', {
-        error,
-        message: error?.message,
-        code: error?.code,
-        details: error?.details
-      })
+      console.error('Error creating template instance - full error:', error)
+      console.error('Error type:', typeof error)  
+      console.error('Error stringify:', JSON.stringify(error, null, 2))
+      console.error('Error stack:', error?.stack)
       throw error
     }
   }
@@ -636,7 +707,12 @@ export class TemplateService {
       const { data, error } = await dbQuery
 
       if (error) throw error
-      return data as TemplateWithSteps[] || []
+      // Ensure each template has template_steps array
+      const templates = (data as TemplateWithSteps[]) || []
+      return templates.map(template => ({
+        ...template,
+        template_steps: template.template_steps || []
+      }))
     } catch (error) {
       console.error('Error searching templates:', error)
       throw new Error('Failed to search templates')

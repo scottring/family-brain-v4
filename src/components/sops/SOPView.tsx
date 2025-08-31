@@ -366,49 +366,137 @@ export function SOPView() {
                                 exit={{ height: 0, opacity: 0 }}
                                 className="mt-3 space-y-2"
                               >
-                                {template.template_steps.map((step, index) => {
-                                  const isCompleted = completedSteps[template.id]?.has(step.id) || false
+                                {(() => {
+                                  // Group steps by section
+                                  const sections: Record<string, typeof template.template_steps> = {}
+                                  const unsectionedSteps: typeof template.template_steps = []
+                                  
+                                  template.template_steps.forEach(step => {
+                                    const section = step.metadata?.section
+                                    if (section) {
+                                      if (!sections[section]) sections[section] = []
+                                      sections[section].push(step)
+                                    } else {
+                                      unsectionedSteps.push(step)
+                                    }
+                                  })
+                                  
+                                  // Sort sections by their order
+                                  const sortedSections = Object.entries(sections).sort((a, b) => {
+                                    const orderA = a[1][0]?.metadata?.sectionOrder || 0
+                                    const orderB = b[1][0]?.metadata?.sectionOrder || 0
+                                    return orderA - orderB
+                                  })
+                                  
                                   const isExecuting = executingTemplate === template.id
+                                  let stepIndex = 0
                                   
                                   return (
-                                    <div
-                                      key={step.id}
-                                      className={cn(
-                                        "flex items-start gap-2 p-2 rounded-md transition-colors",
-                                        isExecuting && "hover:bg-accent cursor-pointer",
-                                        isCompleted && "opacity-60"
-                                      )}
-                                      onClick={() => isExecuting && toggleStep(template.id, step.id)}
-                                    >
-                                      {isExecuting ? (
-                                        <div className="mt-0.5">
-                                          {isCompleted ? (
-                                            <CheckCircleIcon className="h-4 w-4 text-primary" />
-                                          ) : (
-                                            <div className="h-4 w-4 border-2 border-muted-foreground rounded" />
-                                          )}
+                                    <>
+                                      {/* Render unsectioned steps first if any */}
+                                      {unsectionedSteps.length > 0 && unsectionedSteps.map((step) => {
+                                        const isCompleted = completedSteps[template.id]?.has(step.id) || false
+                                        stepIndex++
+                                        const currentIndex = stepIndex
+                                        
+                                        return (
+                                          <div
+                                            key={step.id}
+                                            className={cn(
+                                              "flex items-start gap-2 p-2 rounded-md transition-colors",
+                                              isExecuting && "hover:bg-accent cursor-pointer",
+                                              isCompleted && "opacity-60"
+                                            )}
+                                            onClick={() => isExecuting && toggleStep(template.id, step.id)}
+                                          >
+                                            {isExecuting ? (
+                                              <div className="mt-0.5">
+                                                {isCompleted ? (
+                                                  <CheckCircleIcon className="h-4 w-4 text-primary" />
+                                                ) : (
+                                                  <div className="h-4 w-4 border-2 border-muted-foreground rounded" />
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <span className="text-xs text-muted-foreground mt-0.5">
+                                                {currentIndex}.
+                                              </span>
+                                            )}
+                                            <div className="flex-1">
+                                              <p className={cn(
+                                                "text-sm",
+                                                isCompleted && "line-through"
+                                              )}>
+                                                {step.title}
+                                              </p>
+                                              {step.description && (
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                  {step.description}
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )
+                                      })}
+                                      
+                                      {/* Render sectioned steps */}
+                                      {sortedSections.map(([sectionName, sectionSteps]) => (
+                                        <div key={sectionName} className="space-y-2">
+                                          <div className="font-medium text-sm text-primary mt-3 mb-1 flex items-center gap-2">
+                                            <ChevronRightIcon className="h-4 w-4" />
+                                            {sectionName}
+                                          </div>
+                                          <div className="ml-4 space-y-2">
+                                            {sectionSteps.map((step) => {
+                                              const isCompleted = completedSteps[template.id]?.has(step.id) || false
+                                              stepIndex++
+                                              const currentIndex = stepIndex
+                                              
+                                              return (
+                                                <div
+                                                  key={step.id}
+                                                  className={cn(
+                                                    "flex items-start gap-2 p-2 rounded-md transition-colors",
+                                                    isExecuting && "hover:bg-accent cursor-pointer",
+                                                    isCompleted && "opacity-60"
+                                                  )}
+                                                  onClick={() => isExecuting && toggleStep(template.id, step.id)}
+                                                >
+                                                  {isExecuting ? (
+                                                    <div className="mt-0.5">
+                                                      {isCompleted ? (
+                                                        <CheckCircleIcon className="h-4 w-4 text-primary" />
+                                                      ) : (
+                                                        <div className="h-4 w-4 border-2 border-muted-foreground rounded" />
+                                                      )}
+                                                    </div>
+                                                  ) : (
+                                                    <span className="text-xs text-muted-foreground mt-0.5">
+                                                      {currentIndex}.
+                                                    </span>
+                                                  )}
+                                                  <div className="flex-1">
+                                                    <p className={cn(
+                                                      "text-sm",
+                                                      isCompleted && "line-through"
+                                                    )}>
+                                                      {step.title}
+                                                    </p>
+                                                    {step.description && (
+                                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                                        {step.description}
+                                                      </p>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              )
+                                            })}
+                                          </div>
                                         </div>
-                                      ) : (
-                                        <span className="text-xs text-muted-foreground mt-0.5">
-                                          {index + 1}.
-                                        </span>
-                                      )}
-                                      <div className="flex-1">
-                                        <p className={cn(
-                                          "text-sm",
-                                          isCompleted && "line-through"
-                                        )}>
-                                          {step.title}
-                                        </p>
-                                        {step.description && (
-                                          <p className="text-xs text-muted-foreground mt-0.5">
-                                            {step.description}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
+                                      ))}
+                                    </>
                                   )
-                                })}
+                                })()}
                               </motion.div>
                             )}
                           </AnimatePresence>

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { requireFamilyAccess, createErrorResponse, createSuccessResponse } from '@/lib/auth/server'
 import { createClient } from '@/lib/supabase/server'
-import { scheduleService } from '@/lib/services/ScheduleService'
+import { ScheduleService } from '@/lib/services/ScheduleService'
 
 // GET /api/schedules - Get schedules with optional date range and filters
 export async function GET(request: NextRequest) {
@@ -20,9 +20,38 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('Family ID is required', 400)
     }
 
+    // Create service with server-side client
+    const supabase = await createClient()
+    const scheduleService = new ScheduleService(supabase)
+
     // Single date request
     if (date) {
+      console.log('API: Fetching schedule for date:', date, 'familyId:', user.familyId)
       const schedule = await scheduleService.getScheduleForDate(user.familyId, date)
+      console.log('API: Schedule result:', {
+        found: !!schedule,
+        scheduleId: schedule?.id,
+        timeBlocksCount: schedule?.time_blocks?.length || 0
+      })
+      
+      // Log detailed time block data
+      if (schedule?.time_blocks) {
+        schedule.time_blocks.forEach((tb: any, index: number) => {
+          console.log(`API: Time block ${index}:`, {
+            id: tb.id,
+            time: `${tb.start_time}-${tb.end_time}`,
+            itemsCount: tb.schedule_items?.length || 0,
+            items: tb.schedule_items?.map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              type: item.item_type,
+              hasTemplate: !!item.template,
+              templateTitle: item.template?.title
+            }))
+          })
+        })
+      }
+      
       return createSuccessResponse({ schedule })
     }
 

@@ -108,12 +108,13 @@ export function TodayView() {
   const supabase = createClient()
   const { 
     user: appUser, 
+    currentFamilyId,
     selectedMemberView,
     currentFamilyMembers 
   } = useAppStore()
 
   const fetchTodayData = async () => {
-    if (!appUser?.familyId) return
+    if (!currentFamilyId) return
     
     try {
       setRefreshing(true)
@@ -126,9 +127,13 @@ export function TodayView() {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Today data received:', JSON.stringify(data, null, 2))
-        console.log('Schedule:', data.schedule)
-        console.log('Time blocks:', data.schedule?.time_blocks)
+        console.log('Today data received:', {
+          hasSchedule: !!data.schedule,
+          scheduleId: data.schedule?.id,
+          timeBlocksCount: data.schedule?.time_blocks?.length || 0,
+          timeBlocks: data.schedule?.time_blocks,
+          fullData: data
+        })
         setTodayData(data)
         setDataLoaded(true)
       } else {
@@ -232,10 +237,19 @@ export function TodayView() {
   }, [router])
 
   useEffect(() => {
-    if (appUser?.familyId) {
+    if (currentFamilyId) {
       fetchTodayData()
+    } else if (appUser && !currentFamilyId) {
+      // If user exists but has no family, set empty data
+      setTodayData({
+        schedule: null,
+        currentActivity: null,
+        upcomingActivities: [],
+        stats: null
+      })
+      setDataLoaded(true)
     }
-  }, [appUser?.familyId])
+  }, [currentFamilyId, appUser])
 
   // Auto-refresh every minute to update current time indicators
   useEffect(() => {

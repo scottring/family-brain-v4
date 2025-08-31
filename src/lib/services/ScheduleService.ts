@@ -9,8 +9,14 @@ import {
 } from '@/lib/types/database'
 
 export class ScheduleService {
+  private supabase: any
+  
+  constructor(supabase?: any) {
+    this.supabase = supabase
+  }
+  
   private getSupabase() {
-    return createClient()
+    return this.supabase || createClient()
   }
 
   // Schedule operations
@@ -29,27 +35,29 @@ export class ScheduleService {
 
       if (scheduleError) {
         if (scheduleError.code === 'PGRST116') {
-          console.log('No schedule found for date')
+          console.log('No schedule found for date:', date, 'familyId:', familyId)
           return null
         }
         console.error('Error fetching schedule:', JSON.stringify(scheduleError, null, 2))
         throw scheduleError
       }
 
-      if (!schedule) return null
+      if (!schedule) {
+        console.log('Schedule query returned null for date:', date)
+        return null
+      }
+      
+      console.log('Found schedule:', {
+        id: schedule.id,
+        date: schedule.date,
+        familyId: schedule.family_id
+      })
 
-      // Then get time blocks with assigned user profiles
+      // Then get time blocks (without the problematic left join for now)
+      console.log('Fetching time blocks for schedule:', schedule.id)
       const { data: timeBlocks, error: blocksError } = await supabase
         .from('time_blocks')
-        .select(`
-          *,
-          assigned_user:user_profiles!assigned_to (
-            id,
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('schedule_id', schedule.id)
         .order('start_time', { ascending: true })
 
@@ -57,6 +65,8 @@ export class ScheduleService {
         console.error('Error fetching time blocks:', blocksError)
         throw blocksError
       }
+      
+      console.log('Found time blocks:', timeBlocks?.length || 0)
 
       // Get schedule items for all time blocks
       const timeBlockIds = timeBlocks?.map(tb => tb.id) || []
@@ -68,20 +78,11 @@ export class ScheduleService {
         } as ScheduleWithTimeBlocks
       }
 
-      // Get schedule items with template instances
+      // Get schedule items with basic info first
+      console.log('Fetching schedule items for time blocks:', timeBlockIds)
       const { data: scheduleItems, error: itemsError } = await supabase
         .from('schedule_items')
-        .select(`
-          *,
-          template_instance:template_instances (
-            *,
-            template:templates (*),
-            template_instance_steps (
-              *,
-              template_step:template_steps (*)
-            )
-          )
-        `)
+        .select('*')
         .in('time_block_id', timeBlockIds)
         .order('order_position', { ascending: true })
 
@@ -89,12 +90,80 @@ export class ScheduleService {
         console.error('Error fetching schedule items:', itemsError)
         throw itemsError
       }
+      
+      console.log('Found schedule items:', scheduleItems?.length || 0)
+      
+      // Now fetch templates and template instances for items that have template_id
+      if (scheduleItems && scheduleItems.length > 0) {
+        const templateIds = scheduleItems
+          .filter(item => item.template_id)
+          .map(item => item.template_id)
+        
+        if (templateIds.length > 0) {
+          console.log('Fetching templates for items:', templateIds)
+          const { data: templates, error: templatesError } = await supabase
+            .from('templates')
+            .select('*, template_steps(*)')
+            .in('id', templateIds)
+          
+          if (!templatesError && templates) {
+            // Attach templates to schedule items
+            scheduleItems.forEach(item => {
+              if (item.template_id) {
+                item.template = templates.find(t => t.id === item.template_id)
+              }
+            })
+          }
+        }
+        
+        // Fetch template instances for schedule items
+        const itemIds = scheduleItems.map(item => item.id)
+        console.log('Fetching template instances for items:', itemIds)
+        const { data: templateInstances, error: instancesError } = await supabase
+          .from('template_instances')
+          .select(`
+            *,
+            template_instance_steps (
+              *,
+              template_step:template_steps (*)
+            )
+          `)
+          .in('schedule_item_id', itemIds)
+        
+        if (!instancesError && templateInstances) {
+          console.log('Found template instances:', templateInstances.length)
+          // Attach template instances to schedule items
+          scheduleItems.forEach(item => {
+            const instance = templateInstances.find(ti => ti.schedule_item_id === item.id)
+            if (instance) {
+              item.template_instance = instance
+              console.log(`Item ${item.id} has instance with ${instance.template_instance_steps?.length || 0} steps`)
+            }
+          })
+        } else if (instancesError) {
+          console.error('Error fetching template instances:', instancesError)
+        }
+      }
 
       // Map items to their time blocks (simplified structure)
-      const timeBlocksWithItems = timeBlocks?.map(block => ({
-        ...block,
-        schedule_items: (scheduleItems || []).filter(item => item.time_block_id === block.id)
-      })) || []
+      const timeBlocksWithItems = timeBlocks?.map(block => {
+        const blockItems = (scheduleItems || []).filter(item => item.time_block_id === block.id)
+        console.log(`Time block ${block.id} (${block.start_time}): ${blockItems.length} items`)
+        if (blockItems.length > 0) {
+          console.log('Items for this block:', blockItems.map(i => ({ id: i.id, title: i.title, template_id: i.template_id, has_template: !!i.template })))
+        }
+        return {
+          ...block,
+          schedule_items: blockItems
+        }
+      }) || []
+
+      console.log('Final schedule with time blocks:', {
+        scheduleId: schedule.id,
+        date: schedule.date,
+        timeBlocksCount: timeBlocksWithItems.length,
+        totalItems: timeBlocksWithItems.reduce((sum, tb) => sum + (tb.schedule_items?.length || 0), 0)
+      })
 
       return {
         ...schedule,
@@ -123,18 +192,10 @@ export class ScheduleService {
 
       const scheduleIds = schedules.map(s => s.id)
 
-      // Get all time blocks for these schedules with assigned users
+      // Get all time blocks for these schedules (simplified without user join)
       const { data: timeBlocks, error: blocksError } = await supabase
         .from('time_blocks')
-        .select(`
-          *,
-          assigned_user:user_profiles!assigned_to (
-            id,
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .in('schedule_id', scheduleIds)
         .order('start_time', { ascending: true })
 
@@ -142,27 +203,39 @@ export class ScheduleService {
 
       const timeBlockIds = timeBlocks?.map(tb => tb.id) || []
       
-      // Get all schedule items with template instances
+      // Get all schedule items
       let scheduleItems: any[] = []
       if (timeBlockIds.length > 0) {
         const { data: items, error: itemsError } = await supabase
           .from('schedule_items')
-          .select(`
-            *,
-            template_instance:template_instances (
-              *,
-              template:templates (*),
-              template_instance_steps (
-                *,
-                template_step:template_steps (*)
-              )
-            )
-          `)
+          .select('*')
           .in('time_block_id', timeBlockIds)
           .order('order_position', { ascending: true })
 
         if (itemsError) throw itemsError
         scheduleItems = items || []
+        
+        // Fetch templates for items
+        if (scheduleItems.length > 0) {
+          const templateIds = scheduleItems
+            .filter(item => item.template_id)
+            .map(item => item.template_id)
+          
+          if (templateIds.length > 0) {
+            const { data: templates, error: templatesError } = await supabase
+              .from('templates')
+              .select('*, template_steps(*)')
+              .in('id', templateIds)
+            
+            if (!templatesError && templates) {
+              scheduleItems.forEach(item => {
+                if (item.template_id) {
+                  item.template = templates.find(t => t.id === item.template_id)
+                }
+              })
+            }
+          }
+        }
       }
 
       // Assemble the nested structure
@@ -638,6 +711,7 @@ export class ScheduleService {
   async getTodaysSchedule(familyId: string): Promise<ScheduleWithTimeBlocks | null> {
     try {
       const today = new Date().toISOString().split('T')[0]
+      console.log('Getting schedule for today:', today, 'familyId:', familyId)
       return await this.getScheduleForDate(familyId, today)
     } catch (error) {
       console.error('Error fetching today\'s schedule:', error)
@@ -671,18 +745,10 @@ export class ScheduleService {
 
       const scheduleIds = schedules.map(s => s.id)
 
-      // Get all time blocks for these schedules with assigned users
+      // Get all time blocks for these schedules (simplified without user join)
       const { data: timeBlocks, error: blocksError } = await supabase
         .from('time_blocks')
-        .select(`
-          *,
-          assigned_user:user_profiles!assigned_to (
-            id,
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .in('schedule_id', scheduleIds)
         .order('start_time', { ascending: true })
 
@@ -690,27 +756,39 @@ export class ScheduleService {
 
       const timeBlockIds = timeBlocks?.map(tb => tb.id) || []
       
-      // Get all schedule items with template instances
+      // Get all schedule items
       let scheduleItems: any[] = []
       if (timeBlockIds.length > 0) {
         const { data: items, error: itemsError } = await supabase
           .from('schedule_items')
-          .select(`
-            *,
-            template_instance:template_instances (
-              *,
-              template:templates (*),
-              template_instance_steps (
-                *,
-                template_step:template_steps (*)
-              )
-            )
-          `)
+          .select('*')
           .in('time_block_id', timeBlockIds)
           .order('order_position', { ascending: true })
 
         if (itemsError) throw itemsError
         scheduleItems = items || []
+        
+        // Fetch templates for items
+        if (scheduleItems.length > 0) {
+          const templateIds = scheduleItems
+            .filter(item => item.template_id)
+            .map(item => item.template_id)
+          
+          if (templateIds.length > 0) {
+            const { data: templates, error: templatesError } = await supabase
+              .from('templates')
+              .select('*, template_steps(*)')
+              .in('id', templateIds)
+            
+            if (!templatesError && templates) {
+              scheduleItems.forEach(item => {
+                if (item.template_id) {
+                  item.template = templates.find(t => t.id === item.template_id)
+                }
+              })
+            }
+          }
+        }
       }
 
       // Assemble the nested structure
