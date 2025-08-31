@@ -54,7 +54,8 @@ export function withLazyLoading<P extends object>(
     </LazyWrapper>
   )
   
-  WrappedComponent.displayName = `withLazyLoading(Component)`
+  // Set display name for debugging
+  // WrappedComponent.displayName = `withLazyLoading(Component)`
   
   return WrappedComponent
 }
