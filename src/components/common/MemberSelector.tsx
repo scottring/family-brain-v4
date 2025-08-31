@@ -148,7 +148,7 @@ export function MemberSelector({
                   return (
                     <>
                       <Avatar className="h-5 w-5">
-                        <AvatarImage src={details.avatar} />
+                        <AvatarImage src={details.avatar || undefined} />
                         <AvatarFallback className="text-xs">
                           {details.initials}
                         </AvatarFallback>
@@ -184,7 +184,7 @@ export function MemberSelector({
                   <SelectItem key={child.user_id} value={child.user_id}>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-5 w-5">
-                        <AvatarImage src={details.avatar} />
+                        <AvatarImage src={details.avatar || undefined} />
                         <AvatarFallback className="text-xs">
                           {details.initials}
                         </AvatarFallback>
@@ -208,7 +208,7 @@ export function MemberSelector({
                   <SelectItem key={parent.user_id} value={parent.user_id}>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-5 w-5">
-                        <AvatarImage src={details.avatar} />
+                        <AvatarImage src={details.avatar || undefined} />
                         <AvatarFallback className="text-xs">
                           {details.initials}
                         </AvatarFallback>
