@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useDrop } from 'react-dnd'
 import { PlusIcon } from '@heroicons/react/24/outline'
-import { ScheduleWithTimeBlocks, TemplateWithSteps } from '@/lib/types/database'
+import { ScheduleWithTimeBlocks, TemplateWithSteps, TimeBlockWithItems } from '@/lib/types/database'
 import { TimeBlockSimple } from './TimeBlockSimple'
 import { TimeSlotDropZone } from './TimeSlotDropZone'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
@@ -91,7 +91,7 @@ export function DayColumn({
       // Create schedule item from template
       const scheduleItem = await scheduleService.createScheduleItem(timeBlock.id, {
         title: template.title,
-        description: template.description,
+        description: template.description || undefined,
         item_type: 'template_ref',
         template_id: template.id,
         order_position: 0,
@@ -216,7 +216,7 @@ export function DayColumn({
 
   return (
     <div
-      ref={drop}
+      ref={drop as unknown as React.Ref<HTMLDivElement>}
       className={`relative min-h-full ${
         isOver && canDrop ? 'bg-blue-50 dark:bg-blue-900/10' : ''
       }`}
@@ -241,7 +241,7 @@ export function DayColumn({
         {schedule?.time_blocks?.map((timeBlock) => (
           <TimeBlockSimple
             key={timeBlock.id}
-            timeBlock={timeBlock}
+            timeBlock={timeBlock as TimeBlockWithItems}
             date={date}
             isSelected={selectedTimeBlockId === timeBlock.id}
             onClick={() => onTimeBlockClick?.(timeBlock.id)}

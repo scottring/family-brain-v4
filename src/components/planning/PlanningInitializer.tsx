@@ -44,14 +44,14 @@ export function PlanningInitializer() {
           return
         }
 
-        let availableFamilies = userFamilies?.map(fm => fm.families).filter(Boolean) || []
+        let availableFamilies = userFamilies?.map(fm => fm.families).filter(Boolean).flat() || []
         
         // If no families exist, create a default one
         if (availableFamilies.length === 0) {
           const { data: newFamily, error: createError } = await supabase
             .from('families')
             .insert({
-              name: `${user.user_metadata?.full_name || user.email}'s Family`,
+              name: `${user.full_name || user.email}'s Family`,
               settings: {}
             })
             .select()

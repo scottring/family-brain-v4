@@ -169,7 +169,7 @@ export function ItineraryView() {
     return itineraryData.schedule.time_blocks.map(timeBlock => ({
       ...timeBlock,
       schedule_items: filterItemsForMember(timeBlock.schedule_items || [])
-    })).filter(tb => tb.schedule_items && tb.schedule_items.length > 0)
+    })).filter(tb => tb.schedule_items && tb.schedule_items.length > 0) as TimeBlockWithItems[]
   }
 
   // Calculate stats for selected member
