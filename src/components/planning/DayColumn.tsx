@@ -33,7 +33,7 @@ export function DayColumn({
   selectedTimeBlockId,
   onTimeBlockClick 
 }: DayColumnProps) {
-  const { currentFamilyId } = useAppStore()
+  const { currentFamilyId, selectedMemberView } = useAppStore()
   const { setWeekSchedule } = useScheduleStore()
   const [isDragOver, setIsDragOver] = useState(false)
 
@@ -89,13 +89,18 @@ export function DayColumn({
       console.log('Created time block:', timeBlock)
 
       // Create schedule item from template
+      const metadata: any = {}
+      if (selectedMemberView !== 'all') {
+        metadata.assigned_members = [selectedMemberView]
+      }
+      
       const scheduleItem = await scheduleService.createScheduleItem(timeBlock.id, {
         title: template.title,
         description: template.description || undefined,
         item_type: 'template_ref',
         template_id: template.id,
         order_position: 0,
-        metadata: {}
+        metadata
       })
 
       console.log('Created schedule item:', scheduleItem)
