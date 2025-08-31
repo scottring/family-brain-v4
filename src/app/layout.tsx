@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
 import { AppInitializer } from "@/components/common/AppInitializer";
 import { Toaster } from "sonner";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Family Brain V4 - Smart Daily Companion",
@@ -42,7 +39,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/next.svg" type="image/svg+xml" />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className="font-sans" suppressHydrationWarning>
         <ThemeProvider defaultTheme="system">
           <AppInitializer />
           {children}
