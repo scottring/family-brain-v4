@@ -69,7 +69,7 @@ export function ScheduleItemCard({
   const isSelected = selectedItemId === item.id
 
   const isCompleted = !!item.completed_at
-  const hasSteps = item.template?.template_steps?.length > 0
+  const hasSteps = (item.template?.template_steps?.length ?? 0) > 0
 
   const handleToggleComplete = async () => {
     if (!user || isToggling) return
@@ -141,8 +141,8 @@ export function ScheduleItemCard({
     
     try {
       await scheduleService.deleteScheduleItem(item.id)
-      // Remove from local state
-      updateScheduleItem(item.id, null)
+      // Item will be removed on next data refresh
+      // TODO: Add removeScheduleItem to store for immediate removal
     } catch (error) {
       console.error('Error deleting item:', error)
       alert('Failed to delete item. Please try again.')

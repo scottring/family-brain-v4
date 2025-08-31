@@ -16,7 +16,7 @@ import {
   UserGroupIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline'
-import { TimeBlockWithItems } from '@/lib/types/database'
+import { TimeBlockWithItems, ScheduleItemWithTemplate } from '@/lib/types/database'
 import { ScheduleItemCard } from './ScheduleItemCard'
 import { formatTimeRange, timeToMinutes, calculateDuration, cn } from '@/lib/utils'
 import { scheduleService } from '@/lib/services/ScheduleService'
@@ -62,8 +62,11 @@ function DropZoneForNewItems({ timeBlockId, date }: { timeBlockId: string; date:
         
         // Update local state
         if (timeBlock) {
+          // Type assertion needed due to template_instance type mismatch
+          const updatedItems = [...(timeBlock.schedule_items || [])] as ScheduleItemWithTemplate[]
+          updatedItems.push(newItem as any)
           updateTimeBlock(timeBlockId, {
-            schedule_items: [...(timeBlock.schedule_items || []), newItem]
+            schedule_items: updatedItems
           })
         }
         
@@ -80,7 +83,7 @@ function DropZoneForNewItems({ timeBlockId, date }: { timeBlockId: string; date:
 
   return (
     <div
-      ref={drop}
+      ref={drop as unknown as React.Ref<HTMLDivElement>}
       className={cn(
         "mt-3 px-3 py-2 border-2 border-dashed rounded-lg transition-all",
         isOver
@@ -157,7 +160,7 @@ function DropZoneForNestedItems({
 
   return (
     <div
-      ref={drop}
+      ref={drop as unknown as React.Ref<HTMLDivElement>}
       className={cn(
         "mt-2 ml-6 p-2 border border-dashed rounded text-xs transition-all",
         isOver

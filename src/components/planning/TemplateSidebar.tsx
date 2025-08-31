@@ -233,7 +233,7 @@ function DraggableTemplate({ template }: DraggableTemplateProps) {
   return (
     <>
       <motion.div
-        ref={drag}
+        ref={drag as unknown as React.Ref<HTMLDivElement>}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: isDragging ? 0.5 : 1, y: 0 }}
         className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 cursor-move hover:shadow-md transition-all group"
