@@ -218,15 +218,39 @@ export class TemplateService {
 
   async deleteTemplate(templateId: string): Promise<void> {
     try {
-      const { error } = await this.supabase
+      console.log('Attempting to delete template:', templateId)
+      
+      const { data, error } = await this.supabase
         .from('templates')
         .delete()
         .eq('id', templateId)
-
-      if (error) throw error
+        .select()
+      
+      if (error) {
+        console.error('Supabase delete error:', error)
+        throw error
+      }
+      
+      console.log('Delete result:', data)
+      
+      // If no rows were deleted, check if template exists
+      if (!data || data.length === 0) {
+        const { data: existingTemplate } = await this.supabase
+          .from('templates')
+          .select('id, title, is_system, created_by')
+          .eq('id', templateId)
+          .single()
+        
+        if (existingTemplate) {
+          console.error('Template still exists after delete attempt:', existingTemplate)
+          throw new Error('Failed to delete template - permission denied')
+        } else {
+          console.log('Template successfully deleted or did not exist')
+        }
+      }
     } catch (error) {
       console.error('Error deleting template:', error)
-      throw new Error('Failed to delete template')
+      throw error
     }
   }
 
