@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { ThemeProvider } from "@/components/common/ThemeProvider";
-import { AppInitializer } from "@/components/common/AppInitializer";
-import { Toaster } from "sonner";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Family Brain V4 - Smart Daily Companion",
@@ -40,16 +38,9 @@ export default function RootLayout({
         <link rel="icon" href="/next.svg" type="image/svg+xml" />
       </head>
       <body className="font-sans" suppressHydrationWarning>
-        <ThemeProvider defaultTheme="system">
-          <AppInitializer />
+        <Providers>
           {children}
-          <Toaster 
-            position="top-right"
-            richColors
-            closeButton
-            theme="system"
-          />
-        </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
