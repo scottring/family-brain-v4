@@ -174,12 +174,15 @@ export class TrackingService {
         (data || []).map(d => [d.date, d])
       )
       
-      return dates.map(date => ({
-        date,
-        completed: completionMap.has(date) && completionMap.get(date).completed_count > 0,
-        completed_at: completionMap.get(date)?.last_completed_at || null,
-        completed_by: completionMap.get(date)?.member_id || null
-      }))
+      return dates.map(date => {
+        const completion: any = completionMap.get(date)
+        return {
+          date,
+          completed: completionMap.has(date) && completion?.completed_count > 0,
+          completed_at: completion?.last_completed_at || null,
+          completed_by: completion?.member_id || null
+        }
+      })
     } catch (error) {
       console.error('Error fetching template completions:', error)
       return []

@@ -30,7 +30,7 @@ class PerformanceMonitor {
             this.recordMetric({
               loadTime: navEntry.loadEventEnd - navEntry.loadEventStart,
               renderTime: navEntry.domContentLoadedEventEnd - navEntry.domContentLoadedEventStart,
-              interactionTime: navEntry.domInteractive - navEntry.domLoading
+              interactionTime: navEntry.domInteractive - navEntry.fetchStart
             })
           }
         })
