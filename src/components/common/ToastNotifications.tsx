@@ -244,7 +244,9 @@ export function useToast() {
   useEffect(() => {
     const handleUpdate = () => forceUpdate({})
     subscribers.add(handleUpdate)
-    return () => subscribers.delete(handleUpdate)
+    return () => {
+      subscribers.delete(handleUpdate)
+    }
   }, [])
   
   return {
