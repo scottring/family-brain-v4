@@ -144,7 +144,7 @@ export function TodayView() {
           schedule: null,
           currentActivity: null,
           upcomingActivities: [],
-          stats: null
+          stats: undefined
         })
         setDataLoaded(true)
       }
@@ -155,7 +155,7 @@ export function TodayView() {
         schedule: null,
         currentActivity: null,
         upcomingActivities: [],
-        stats: null
+        stats: undefined
       })
       setDataLoaded(true)
     } finally {
@@ -246,7 +246,7 @@ export function TodayView() {
         schedule: null,
         currentActivity: null,
         upcomingActivities: [],
-        stats: null
+        stats: undefined
       })
       setDataLoaded(true)
     }

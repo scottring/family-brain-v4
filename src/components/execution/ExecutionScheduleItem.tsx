@@ -14,7 +14,7 @@ import {
   PencilIcon
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid'
-import { ScheduleItemWithTemplate } from '@/lib/types/database'
+import { ScheduleItemWithTemplate, TemplateInstanceWithSteps } from '@/lib/types/database'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
 import { useFamilyPresenceStore } from '@/lib/stores/useFamilyPresenceStore'
@@ -182,7 +182,7 @@ export function ExecutionScheduleItem({
       // Update local state with the new instance
       setLocalItem({
         ...localItem,
-        template_instance: instance
+        template_instance: instance as TemplateInstanceWithSteps
       })
       
       // Expand the item to show the checklist
