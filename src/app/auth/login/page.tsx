@@ -47,7 +47,9 @@ export default function LoginPage() {
 
       if (error) {
         if (error.message.includes('Email not confirmed')) {
-          setError('Please check your email and confirm your account before signing in. Check your spam folder if you don\'t see it.');
+          setError('Please check your email (including spam/junk folder) and confirm your account before signing in. Click "Resend confirmation email" below if you didn\'t receive it.');
+        } else if (error.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please check your credentials and try again.');
         } else {
           throw error;
         }

@@ -2,12 +2,13 @@
 
 import { Fragment, useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
-import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, PlusIcon, TrashIcon, ListBulletIcon } from '@heroicons/react/24/outline'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { useTemplateStore } from '@/lib/stores/useTemplateStore'
 import { templateService } from '@/lib/services/TemplateService'
 import { TemplateCategory, StepType } from '@/lib/types/database'
 import { toast } from 'sonner'
+import { BulkStepModal } from '@/components/templates/BulkStepModal'
 
 interface CreateTemplateModalProps {
   isOpen: boolean
@@ -56,6 +57,7 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
   
   const [steps, setSteps] = useState<TemplateStepData[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showBulkAdd, setShowBulkAdd] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -151,6 +153,7 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
   }
 
   return (
+    <>
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <Transition.Child
@@ -261,14 +264,24 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
                       <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                         Steps (Optional)
                       </h4>
-                      <button
-                        type="button"
-                        onClick={addStep}
-                        className="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                      >
-                        <PlusIcon className="h-4 w-4 mr-1" />
-                        Add Step
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowBulkAdd(true)}
+                          className="inline-flex items-center px-3 py-1 text-sm font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                        >
+                          <ListBulletIcon className="h-4 w-4 mr-1" />
+                          Bulk Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={addStep}
+                          className="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                        >
+                          <PlusIcon className="h-4 w-4 mr-1" />
+                          Add Step
+                        </button>
+                      </div>
                     </div>
 
                     {steps.length === 0 ? (
@@ -375,5 +388,30 @@ export function CreateTemplateModal({ isOpen, onClose }: CreateTemplateModalProp
         </div>
       </Dialog>
     </Transition>
+    
+    {/* Bulk Add Modal */}
+    <BulkStepModal
+      isOpen={showBulkAdd}
+      onClose={() => setShowBulkAdd(false)}
+      onAdd={(newSteps) => {
+        const formattedSteps = newSteps.map(() => ({
+          id: Date.now().toString() + Math.random(),
+          title: '',
+          description: '',
+          step_type: 'task' as StepType
+        }))
+        
+        // Update the formatted steps with the actual data
+        const finalSteps = newSteps.map((step, index) => ({
+          id: Date.now().toString() + Math.random() + index,
+          title: step.title,
+          description: step.description,
+          step_type: 'task' as StepType
+        }))
+        
+        setSteps([...steps, ...finalSteps])
+      }}
+    />
+    </>
   )
 }

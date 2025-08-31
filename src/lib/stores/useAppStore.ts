@@ -14,6 +14,7 @@ interface AppState {
   
   // UI state
   currentView: 'today' | 'planning' | 'sops'
+  selectedMemberView: string | 'all'  // Member ID or 'all' for everyone
   isMobile: boolean
   isLoading: boolean
   isInitializing: boolean
@@ -32,6 +33,7 @@ interface AppState {
   setCurrentFamilyId: (familyId: string | null) => void
   setCurrentFamilyMembers: (members: FamilyMemberWithProfile[]) => void
   setCurrentView: (view: 'today' | 'planning' | 'sops') => void
+  setSelectedMemberView: (memberId: string | 'all') => void
   setIsMobile: (isMobile: boolean) => void
   setIsLoading: (isLoading: boolean) => void
   setIsInitializing: (isInitializing: boolean) => void
@@ -45,6 +47,7 @@ const initialState = {
   currentFamilyId: null,
   currentFamilyMembers: [],
   currentView: 'today' as const,
+  selectedMemberView: 'all' as const,
   isMobile: false,
   isLoading: false,
   isInitializing: false,
@@ -63,11 +66,25 @@ export const useAppStore = create<AppState>()((set) => ({
   
   setFamilies: (families) => set({ families }),
   
-  setCurrentFamilyId: (familyId) => set({ currentFamilyId: familyId }),
+  setCurrentFamilyId: (familyId) => {
+    set({ currentFamilyId: familyId })
+    // Persist to localStorage
+    if (typeof window !== 'undefined' && familyId) {
+      localStorage.setItem('currentFamilyId', familyId)
+    }
+  },
   
   setCurrentFamilyMembers: (members) => set({ currentFamilyMembers: members }),
   
   setCurrentView: (view) => set({ currentView: view }),
+  
+  setSelectedMemberView: (selectedMemberView) => {
+    set({ selectedMemberView })
+    // Persist to localStorage for convenience
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selectedMemberView', selectedMemberView)
+    }
+  },
   
   setIsMobile: (isMobile) => set({ isMobile }),
   

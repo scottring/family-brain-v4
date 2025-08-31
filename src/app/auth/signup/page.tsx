@@ -37,11 +37,16 @@ export default function SignupPage() {
 
       // Check if email confirmation is required
       if (authData.user && !authData.session) {
-        setError('Please check your email and click the confirmation link to complete your account setup.');
+        setError('Account created! Please check your email (including spam folder) and click the confirmation link. If you don\'t receive it within 5 minutes, try the resend option on the login page.');
+        
+        // Redirect to login after a delay so they can see the message
+        setTimeout(() => {
+          router.push('/auth/login');
+        }, 5000);
         return;
       }
 
-      // If we have a session, user is confirmed and logged in
+      // If we have a session, user is confirmed and logged in (email confirmation disabled)
       if (authData.session) {
         // User profile and family are automatically created by database triggers
         // No need to manually create them here
@@ -51,6 +56,21 @@ export default function SignupPage() {
 
         router.push('/today');
         router.refresh();
+      }
+      
+      // If user was created but no session (email confirmations disabled but still no session)
+      if (authData.user) {
+        // Try to sign them in automatically
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (!signInError && signInData.session) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          router.push('/today');
+          router.refresh();
+        }
       }
     } catch (error: any) {
       setError(error.message || 'An error occurred during signup');

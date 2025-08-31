@@ -39,6 +39,7 @@ interface ScheduleState {
   setArtifactPanelItemId: (itemId: string | null) => void
   updateScheduleItem: (itemId: string, updates: Partial<ScheduleItemWithTemplate>) => void
   updateTimeBlock: (blockId: string, updates: Partial<TimeBlockWithItems>) => void
+  removeTimeBlock: (date: string, blockId: string) => void
   reset: () => void
 }
 
@@ -145,6 +146,34 @@ export const useScheduleStore = create<ScheduleState>()(
         },
         false,
         'updateTimeBlock'
+      ),
+      
+      removeTimeBlock: (date: string, blockId: string) => set(
+        (state) => {
+          const schedule = state.weekSchedules[date]
+          if (!schedule) return state
+          
+          // Create a completely new array of time blocks without the deleted one
+          const updatedTimeBlocks = schedule.time_blocks.filter(tb => tb.id !== blockId)
+          
+          // Create a new schedule object
+          const updatedSchedule = {
+            ...schedule,
+            time_blocks: updatedTimeBlocks
+          }
+          
+          // Create new weekSchedules object to ensure React detects the change
+          const newWeekSchedules = { ...state.weekSchedules }
+          newWeekSchedules[date] = updatedSchedule
+          
+          return {
+            ...state,
+            currentSchedule: state.currentDate === date ? updatedSchedule : state.currentSchedule,
+            weekSchedules: newWeekSchedules
+          }
+        },
+        false,
+        'removeTimeBlock'
       ),
       
       reset: () => set(initialState, false, 'reset')

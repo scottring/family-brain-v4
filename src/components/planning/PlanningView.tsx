@@ -15,6 +15,7 @@ import { useTemplateStore } from '@/lib/stores/useTemplateStore'
 import { scheduleService } from '@/lib/services/ScheduleService'
 import { templateService } from '@/lib/services/TemplateService'
 import { getWeekRange, formatDisplayDate } from '@/lib/utils'
+import { MemberSelector } from '@/components/common/MemberSelector'
 
 export function PlanningView() {
   const { currentFamilyId, isMobile } = useAppStore()
@@ -158,6 +159,7 @@ export function PlanningView() {
             </div>
 
             <div className="flex items-center space-x-3">
+              <MemberSelector />
               <button
                 onClick={() => setIsQuickAddOpen(true)}
                 className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"

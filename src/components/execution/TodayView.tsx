@@ -24,10 +24,12 @@ import {
 } from 'lucide-react'
 import { AppShell } from '@/components/common/AppShell'
 import { TodayViewSkeleton } from '@/components/common/LoadingSkeletons'
+import { MemberSelector } from '@/components/common/MemberSelector'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Progress } from '@/components/ui/progress'
 import { ExecutionTimeBlock } from './ExecutionTimeBlock'
 import { CurrentTimeIndicator } from './CurrentTimeIndicator'
 import { FocusMode } from './FocusMode'
@@ -96,6 +98,7 @@ export function TodayView() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [todayData, setTodayData] = useState<TodayData | null>(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [focusMode, setFocusMode] = useState<{
     isOpen: boolean
@@ -103,7 +106,11 @@ export function TodayView() {
   }>({ isOpen: false, timeBlock: null })
   const router = useRouter()
   const supabase = createClient()
-  const { user: appUser } = useAppStore()
+  const { 
+    user: appUser, 
+    selectedMemberView,
+    currentFamilyMembers 
+  } = useAppStore()
 
   const fetchTodayData = async () => {
     if (!appUser?.familyId) return
@@ -119,12 +126,32 @@ export function TodayView() {
       
       if (response.ok) {
         const data = await response.json()
-        setTodayData(data.data)
+        console.log('Today data received:', JSON.stringify(data, null, 2))
+        console.log('Schedule:', data.schedule)
+        console.log('Time blocks:', data.schedule?.time_blocks)
+        setTodayData(data)
+        setDataLoaded(true)
       } else {
         console.error('Failed to fetch today data:', response.statusText)
+        // Set empty data instead of null to avoid landing page
+        setTodayData({
+          schedule: null,
+          currentActivity: null,
+          upcomingActivities: [],
+          stats: null
+        })
+        setDataLoaded(true)
       }
     } catch (error) {
       console.error('Error fetching today data:', error)
+      // Set empty data on error
+      setTodayData({
+        schedule: null,
+        currentActivity: null,
+        upcomingActivities: [],
+        stats: null
+      })
+      setDataLoaded(true)
     } finally {
       setRefreshing(false)
     }
@@ -136,6 +163,59 @@ export function TodayView() {
 
   const handleCloseFocusMode = () => {
     setFocusMode({ isOpen: false, timeBlock: null })
+  }
+
+  // Filter schedule items based on selected member view
+  const filterItemsForMember = (items: ScheduleItem[]): ScheduleItem[] => {
+    if (selectedMemberView === 'all') return items
+    
+    return items.filter(item => {
+      const assignedMembers = item.metadata?.assigned_members
+      
+      // If no assignment, it's available to all
+      if (!assignedMembers || assignedMembers.length === 0) return true
+      
+      // Check if member is in assigned list
+      return assignedMembers.includes(selectedMemberView)
+    })
+  }
+
+  // Get filtered time blocks with filtered items
+  const getFilteredTimeBlocks = (): TimeBlockWithItems[] => {
+    if (!todayData?.schedule?.time_blocks) return []
+    
+    if (selectedMemberView === 'all') {
+      return todayData.schedule.time_blocks
+    }
+    
+    // Filter items within each time block
+    return todayData.schedule.time_blocks.map(timeBlock => ({
+      ...timeBlock,
+      schedule_items: filterItemsForMember(timeBlock.schedule_items || [])
+    })).filter(tb => tb.schedule_items && tb.schedule_items.length > 0)
+  }
+
+  // Calculate stats for selected member
+  const getMemberStats = () => {
+    const filteredBlocks = getFilteredTimeBlocks()
+    const allItems = filteredBlocks.flatMap(tb => tb.schedule_items || [])
+    const completedItems = allItems.filter(item => item.completed_at)
+    
+    return {
+      totalItems: allItems.length,
+      completedItems: completedItems.length,
+      completionRate: allItems.length > 0 
+        ? Math.round((completedItems.length / allItems.length) * 100)
+        : 0
+    }
+  }
+
+  // Get member name for display
+  const getSelectedMemberName = () => {
+    if (selectedMemberView === 'all') return 'Everyone'
+    
+    const member = currentFamilyMembers.find(m => m.user_id === selectedMemberView)
+    return member?.user?.full_name || 'Unknown'
   }
 
   useEffect(() => {
@@ -182,8 +262,8 @@ export function TodayView() {
 
   const GreetingIcon = GreetingIconComponent
 
-  // Show welcome screen if no schedule data  
-  if (!todayData?.schedule?.time_blocks?.length) {
+  // Show welcome screen only if data is loaded AND there are no time blocks
+  if (dataLoaded && (!todayData?.schedule?.time_blocks || todayData.schedule.time_blocks.length === 0)) {
     return (
     <AppShell>
       <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background">
@@ -335,7 +415,31 @@ export function TodayView() {
   }
 
   // Main execution view with schedule data
-  const { stats, currentActivity } = todayData || {}
+  // Handle case where todayData might still be null
+  if (!todayData) {
+    return (
+      <AppShell>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your schedule...</p>
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
+  
+  const filteredTimeBlocks = getFilteredTimeBlocks()
+  const memberStats = getMemberStats()
+  const memberName = getSelectedMemberName()
+  const { currentActivity } = todayData
+  
+  console.log('Rendering main view with:', {
+    hasData: !!todayData,
+    hasSchedule: !!todayData?.schedule,
+    timeBlockCount: todayData?.schedule?.time_blocks?.length || 0,
+    filteredBlockCount: filteredTimeBlocks.length
+  })
   
   return (
     <AppShell>
@@ -354,19 +458,22 @@ export function TodayView() {
                   </div>
                   <CurrentTimeIndicator />
                 </div>
+
+                {/* Member Selector */}
+                <MemberSelector className="mx-4" />
                 
-                {stats && (
+                {memberStats && (
                   <div className="hidden md:flex items-center space-x-6">
                     <div className="flex items-center space-x-2">
                       <Target className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">
-                        {stats.completedItems}/{stats.totalItems} completed
+                        {memberStats.completedItems}/{memberStats.totalItems} completed
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <TrendingUp className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">
-                        {Math.round(stats.completionRate)}% done
+                        {memberStats.completionRate}% done
                       </span>
                     </div>
                   </div>
@@ -383,12 +490,21 @@ export function TodayView() {
                 </Button>
               </div>
               
-              {stats && (
+              {memberStats && (
                 <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">
+                      {selectedMemberView === 'all' ? 'Overall Progress' : `${memberName}'s Progress`}
+                    </span>
+                    <span className="text-sm font-medium">
+                      {memberStats.completionRate}%
+                    </span>
+                  </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <motion.div
+                      key={selectedMemberView} // Re-animate on member change
                       initial={{ width: 0 }}
-                      animate={{ width: `${stats.completionRate}%` }}
+                      animate={{ width: `${memberStats.completionRate}%` }}
                       transition={{ duration: 1, ease: 'easeOut' }}
                       className="h-2 bg-gradient-to-r from-primary to-primary/80 rounded-full"
                     />
@@ -446,7 +562,7 @@ export function TodayView() {
         <div className="px-6 pb-12">
           <div className="max-w-6xl mx-auto">
             <div className="space-y-4">
-              {todayData.schedule.time_blocks.map((timeBlock, index) => {
+              {filteredTimeBlocks && filteredTimeBlocks.map((timeBlock, index) => {
                 const now = new Date()
                 const currentTime = now.toTimeString().split(' ')[0].slice(0, 5)
                 const isActive = currentTime >= timeBlock.start_time && currentTime <= timeBlock.end_time
@@ -455,7 +571,7 @@ export function TodayView() {
                   <ExecutionTimeBlock
                     key={timeBlock.id}
                     timeBlock={timeBlock as TimeBlockWithItems}
-                    date={todayData.schedule!.date}
+                    date={todayData?.schedule?.date || new Date().toISOString().split('T')[0]}
                     isActive={isActive}
                     index={index}
                     onOpenFocus={() => handleOpenFocusMode(timeBlock as TimeBlockWithItems)}
@@ -465,7 +581,7 @@ export function TodayView() {
             </div>
             
             {/* Empty State for No Time Blocks */}
-            {todayData.schedule.time_blocks.length === 0 && (
+            {(!todayData || !todayData.schedule || !todayData.schedule?.time_blocks || todayData.schedule.time_blocks?.length === 0) && (
               <Card className="border-dashed border-2 border-muted">
                 <CardContent className="p-12 text-center">
                   <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

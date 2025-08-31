@@ -2,6 +2,7 @@
 
 export type UserRole = 'owner' | 'member'
 export type ItemType = 'simple' | 'procedure' | 'template_ref'
+export type RecurrencePattern = 'daily' | 'weekdays' | 'weekly' | 'custom'
 export type StepType = 'task' | 'note' | 'decision' | 'resource' | 'reference'
 export type TemplateCategory = 
   | 'morning'
@@ -74,6 +75,10 @@ export interface ScheduleItem {
   completed_by: string | null
   order_position: number
   metadata: Record<string, any>
+  recurrence_pattern?: RecurrencePattern | null
+  recurrence_days?: number[] | null  // 0=Sunday, 6=Saturday
+  recurrence_end_date?: string | null
+  recurrence_group_id?: string | null
   created_at: string
   updated_at: string
   template_instance?: TemplateInstance
@@ -96,6 +101,15 @@ export interface Template {
   template_steps?: TemplateStep[]
 }
 
+export type AssigneeType = 'all_members' | 'all_children' | 'specific_member' | 'any_member'
+
+export interface TemplateStepMetadata {
+  assignee_type?: AssigneeType
+  specific_member_id?: string
+  exclude_members?: string[]
+  [key: string]: any
+}
+
 export interface TemplateStep {
   id: string
   template_id: string
@@ -103,7 +117,7 @@ export interface TemplateStep {
   description: string | null
   order_position: number
   step_type: StepType
-  metadata: Record<string, any>
+  metadata: TemplateStepMetadata
   created_at: string
   updated_at: string
 }
@@ -122,11 +136,13 @@ export interface TemplateInstanceStep {
   id: string
   template_instance_id: string
   template_step_id: string
+  assigned_to: string | null  // The family member this step is assigned to
   completed_at: string | null
   completed_by: string | null
   notes: string | null
   created_at: string
   template_step?: TemplateStep
+  assigned_user?: UserProfile  // When joined with user_profiles
 }
 
 // Helper types for API responses

@@ -28,13 +28,15 @@ import {
   GripVertical,
   Save,
   Copy,
-  Trash2
+  Trash2,
+  ListPlus
 } from 'lucide-react'
-import { TemplateWithSteps, TemplateCategory, TemplateStep, StepType } from '@/lib/types/database'
+import { TemplateWithSteps, TemplateCategory, TemplateStep, StepType, AssigneeType } from '@/lib/types/database'
 import { templateService } from '@/lib/services/TemplateService'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { useTemplateStore } from '@/lib/stores/useTemplateStore'
 import { cn } from '@/lib/utils'
+import { BulkStepModal } from './BulkStepModal'
 
 const CATEGORY_OPTIONS: { value: TemplateCategory; label: string; icon: string }[] = [
   { value: 'morning', label: 'Morning', icon: '🌅' },
@@ -73,6 +75,7 @@ export function EditTemplateModal({
   const [steps, setSteps] = useState<Partial<TemplateStep>[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [editMode, setEditMode] = useState<'permanent' | 'temporary'>(mode)
+  const [showBulkAdd, setShowBulkAdd] = useState(false)
 
   useEffect(() => {
     if (template) {
@@ -293,6 +296,7 @@ export function EditTemplateModal({
   }
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -381,15 +385,26 @@ export function EditTemplateModal({
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label>Steps</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddStep}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Step
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBulkAdd(true)}
+                >
+                  <ListPlus className="h-4 w-4 mr-1" />
+                  Bulk Add
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddStep}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Step
+                </Button>
+              </div>
             </div>
             
             <AnimatePresence>
@@ -415,20 +430,41 @@ export function EditTemplateModal({
                       placeholder="Step description (optional)"
                       rows={1}
                     />
-                    <Select 
-                      value={step.step_type || 'checkbox'} 
-                      onValueChange={(value) => handleStepChange(index, 'step_type', value)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="checkbox">Checkbox</SelectItem>
-                        <SelectItem value="text">Text Input</SelectItem>
-                        <SelectItem value="note">Note</SelectItem>
-                        <SelectItem value="link">Link</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select 
+                        value={step.step_type || 'task'} 
+                        onValueChange={(value) => handleStepChange(index, 'step_type', value)}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="task">Task</SelectItem>
+                          <SelectItem value="note">Note</SelectItem>
+                          <SelectItem value="decision">Decision</SelectItem>
+                          <SelectItem value="resource">Resource</SelectItem>
+                          <SelectItem value="reference">Reference</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      <Select 
+                        value={step.metadata?.assignee_type || 'any_member'} 
+                        onValueChange={(value) => {
+                          const newMetadata = { ...(step.metadata || {}), assignee_type: value as AssigneeType }
+                          handleStepChange(index, 'metadata', newMetadata)
+                        }}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any_member">Anyone</SelectItem>
+                          <SelectItem value="all_children">All Children</SelectItem>
+                          <SelectItem value="all_members">All Members</SelectItem>
+                          <SelectItem value="specific_member">Specific Person</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   
                   <Button
@@ -467,5 +503,22 @@ export function EditTemplateModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    
+    {/* Bulk Add Modal */}
+    <BulkStepModal
+      isOpen={showBulkAdd}
+      onClose={() => setShowBulkAdd(false)}
+      onAdd={(newSteps) => {
+        const formattedSteps = newSteps.map((step, index) => ({
+          title: step.title,
+          description: step.description,
+          step_type: 'task' as StepType,
+          order_position: steps.length + index,
+          metadata: {}
+        }))
+        setSteps([...steps, ...formattedSteps])
+      }}
+    />
+    </>
   )
 }

@@ -1,7 +1,12 @@
 'use client'
 
-import { SOPView } from '@/components/templates/SOPView'
+import { AppShell } from '@/components/common/AppShell'
+import { SOPView } from '@/components/sops/SOPView'
 
 export default function SOPsPage() {
-  return <SOPView />
+  return (
+    <AppShell>
+      <SOPView />
+    </AppShell>
+  )
 }

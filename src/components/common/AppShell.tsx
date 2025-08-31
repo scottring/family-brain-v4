@@ -28,6 +28,8 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ThemeToggle } from './ThemeToggle'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import ErrorBoundary from './ErrorBoundary'
 import { useAccessibility } from '@/hooks/useAccessibility'
@@ -82,6 +84,7 @@ const AppShell = memo(function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
   const { currentView, setCurrentView, isMobile, setIsMobile, user } = useAppStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const supabase = createClient()
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts()
@@ -118,6 +121,19 @@ const AppShell = memo(function AppShell({ children }: AppShellProps) {
     setMobileMenuOpen(false)
     router.push(item.href)
     announce(`Navigated to ${item.label}`)
+  }
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      
+      // Clear app state and redirect
+      window.location.href = '/auth/login'
+    } catch (error) {
+      console.error('Error signing out:', error)
+      toast.error('Failed to sign out')
+    }
   }
 
   const isActiveRoute = (href: string) => {
@@ -251,6 +267,19 @@ const AppShell = memo(function AppShell({ children }: AppShellProps) {
                       </TooltipTrigger>
                       <TooltipContent>Settings</TooltipContent>
                     </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={handleLogout}
+                        >
+                          <LogOut className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Sign Out</TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
@@ -332,6 +361,23 @@ const AppShell = memo(function AppShell({ children }: AppShellProps) {
                             </Button>
                           )
                         })}
+                        
+                        <Separator className="my-2" />
+                        
+                        <Button
+                          variant="ghost"
+                          size="lg"
+                          onClick={handleLogout}
+                          className="w-full justify-start h-auto py-4 px-4 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        >
+                          <LogOut className="h-5 w-5 mr-4" />
+                          <div className="text-left">
+                            <div className="font-medium">Sign Out</div>
+                            <div className="text-xs mt-0.5 opacity-80">
+                              Log out of your account
+                            </div>
+                          </div>
+                        </Button>
                       </nav>
                     </div>
                   </SheetContent>

@@ -2,12 +2,13 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { ScheduleWithTimeBlocks, TimeBlockWithItems } from '@/lib/types/database'
+import { ScheduleWithTimeBlocks, TimeBlockWithItems, ScheduleItem } from '@/lib/types/database'
 import { DayColumn } from './DayColumn'
 import { TimeGutter } from './TimeGutter'
 import { TimeBlockDetailPanel } from './TimeBlockDetailPanel'
 import { ChecklistPanel } from './ChecklistPanel'
 import { getWeekRange, getTimeSlots, getCurrentTimeSlot, timeToMinutes } from '@/lib/utils'
+import { useAppStore } from '@/lib/stores/useAppStore'
 
 interface WeekCalendarProps {
   weekStart: Date
@@ -22,6 +23,7 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
   const [selectedTimeBlock, setSelectedTimeBlock] = useState<TimeBlockWithItems | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [panelType, setPanelType] = useState<'detail' | 'checklist'>('detail')
+  const { selectedMemberView } = useAppStore()
 
   // Update current time every minute
   useEffect(() => {
@@ -53,13 +55,49 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
 
   const currentTimePosition = getCurrentTimePosition()
   
+  // Filter schedule items based on selected member view
+  const filterItemsForMember = (items: ScheduleItem[]): ScheduleItem[] => {
+    if (selectedMemberView === 'all') return items
+    
+    return items.filter(item => {
+      const assignedMembers = item.metadata?.assigned_members
+      
+      // If no assignment, it's available to all
+      if (!assignedMembers || assignedMembers.length === 0) return true
+      
+      // Check if member is in assigned list
+      return assignedMembers.includes(selectedMemberView)
+    })
+  }
+
+  // Get filtered schedules with member-specific items
+  const getFilteredSchedules = (): Record<string, ScheduleWithTimeBlocks> => {
+    if (selectedMemberView === 'all') return schedules
+    
+    const filteredSchedules: Record<string, ScheduleWithTimeBlocks> = {}
+    
+    Object.entries(schedules).forEach(([date, schedule]) => {
+      filteredSchedules[date] = {
+        ...schedule,
+        time_blocks: schedule.time_blocks.map(timeBlock => ({
+          ...timeBlock,
+          schedule_items: filterItemsForMember(timeBlock.schedule_items || [])
+        }))
+      }
+    })
+    
+    return filteredSchedules
+  }
+
+  const filteredSchedules = getFilteredSchedules()
+  
   // Handle time block selection
   const handleTimeBlockClick = (timeBlockId: string, date: string) => {
     setSelectedTimeBlockId(timeBlockId)
     setSelectedDate(date)
     
-    // Find the time block in schedules
-    const schedule = schedules[date]
+    // Find the time block in filtered schedules
+    const schedule = filteredSchedules[date]
     if (schedule) {
       const timeBlock = schedule.time_blocks.find(tb => tb.id === timeBlockId)
       setSelectedTimeBlock(timeBlock || null)
@@ -122,7 +160,7 @@ export function WeekCalendar({ weekStart, schedules }: WeekCalendarProps) {
                     {/* Day Column */}
                     <DayColumn
                       date={dateStr}
-                      schedule={schedules[dateStr]}
+                      schedule={filteredSchedules[dateStr]}
                       timeSlots={timeSlots}
                       selectedTimeBlockId={selectedTimeBlockId}
                       onTimeBlockClick={(timeBlockId) => handleTimeBlockClick(timeBlockId, dateStr)}

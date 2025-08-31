@@ -7,13 +7,16 @@ import {
   Bars3Icon,
   ClipboardDocumentCheckIcon,
   CheckCircleIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { TimeBlockWithItems } from '@/lib/types/database'
 import { timeToMinutes, calculateDuration, cn } from '@/lib/utils'
 import { scheduleService } from '@/lib/services/ScheduleService'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
+import { useAppStore } from '@/lib/stores/useAppStore'
 import { toast } from 'sonner'
+import { UndoNotification } from '@/components/common/UndoNotification'
 
 interface TimeBlockProps {
   timeBlock: TimeBlockWithItems
@@ -31,8 +34,11 @@ export function TimeBlockSimple({
   const [isResizing, setIsResizing] = useState(false)
   const [resizeStartY, setResizeStartY] = useState(0)
   const [resizeStartHeight, setResizeStartHeight] = useState(0)
+  const [deletedBlock, setDeletedBlock] = useState<TimeBlockWithItems | null>(null)
+  const [showUndoNotification, setShowUndoNotification] = useState(false)
   const blockRef = useRef<HTMLDivElement>(null)
-  const { updateTimeBlock, weekSchedules } = useScheduleStore()
+  const { updateTimeBlock, weekSchedules, removeTimeBlock } = useScheduleStore()
+  const { selectedMemberView } = useAppStore()
   
   // Set up drag functionality with delay to prevent conflict with clicks
   const [{ isDragging }, drag, dragPreview] = useDrag({
@@ -58,12 +64,19 @@ export function TimeBlockSimple({
           const currentBlock = schedule?.time_blocks.find(tb => tb.id === timeBlock.id)
           const nextOrder = (currentBlock?.schedule_items?.length || 0) + 1
           
+          // Add member assignment metadata based on current view
+          const metadata: any = {}
+          if (selectedMemberView !== 'all') {
+            metadata.assigned_members = [selectedMemberView]
+          }
+          
           const newItem = await scheduleService.createScheduleItem(timeBlock.id, {
             title: draggedItem.template.title,
             description: draggedItem.template.description,
             item_type: 'template_ref',
             template_id: draggedItem.template.id,
-            order_position: nextOrder
+            order_position: nextOrder,
+            metadata
           })
           
           if (currentBlock) {
@@ -189,6 +202,69 @@ export function TimeBlockSimple({
     }
   }, [isResizing, resizeStartY, resizeStartHeight, timeBlock, updateTimeBlock])
   
+  // Handle delete time block
+  const handleDeleteBlock = async (e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent triggering onClick
+    
+    try {
+      // Store the block for undo BEFORE deleting
+      setDeletedBlock(timeBlock)
+      
+      // Delete from database first
+      await scheduleService.deleteTimeBlock(timeBlock.id)
+      
+      // Remove from local state after successful deletion
+      removeTimeBlock(date, timeBlock.id)
+      
+      // Show undo notification after successful deletion
+      setShowUndoNotification(true)
+      
+      toast.success('Time block deleted')
+    } catch (error) {
+      console.error('Error deleting time block:', error)
+      toast.error('Failed to delete time block')
+    }
+  }
+  
+  // Handle undo delete
+  const handleUndoDelete = async () => {
+    if (!deletedBlock) return
+    
+    try {
+      // Recreate the time block
+      const restoredBlock = await scheduleService.createTimeBlock(deletedBlock.schedule_id, {
+        start_time: deletedBlock.start_time,
+        end_time: deletedBlock.end_time,
+        title: deletedBlock.title,
+        color: deletedBlock.color
+      })
+      
+      // Restore items if any
+      if (deletedBlock.schedule_items && deletedBlock.schedule_items.length > 0) {
+        for (const item of deletedBlock.schedule_items) {
+          await scheduleService.createScheduleItem(restoredBlock.id, {
+            title: item.title,
+            description: item.description,
+            item_type: item.item_type,
+            template_id: item.template_id,
+            order_position: item.order_position,
+            metadata: item.metadata
+          })
+        }
+      }
+      
+      // Update local state
+      updateTimeBlock(restoredBlock.id, restoredBlock)
+      
+      setShowUndoNotification(false)
+      setDeletedBlock(null)
+      toast.success('Time block restored')
+    } catch (error) {
+      console.error('Error restoring time block:', error)
+      toast.error('Failed to restore time block')
+    }
+  }
+  
   const startMinutes = timeToMinutes(timeBlock.start_time)
   const duration = calculateDuration(timeBlock.start_time, timeBlock.end_time)
   
@@ -234,6 +310,7 @@ export function TimeBlockSimple({
   }
   
   return (
+    <>
     <motion.div
       ref={blockRef}
       initial={{ opacity: 0, scale: 0.95 }}
@@ -256,6 +333,15 @@ export function TimeBlockSimple({
       <div className="absolute left-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
         <Bars3Icon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
       </div>
+      
+      {/* Delete Button */}
+      <button
+        onClick={handleDeleteBlock}
+        className="absolute top-1 right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-sm hover:shadow-md z-10"
+        title="Delete time block"
+      >
+        <XMarkIcon className="h-3 w-3" />
+      </button>
       
       {/* Content */}
       <div className="h-full px-3 py-1.5 flex items-center">
@@ -314,5 +400,19 @@ export function TimeBlockSimple({
         onMouseDown={handleResizeStart}
       />
     </motion.div>
+    
+    {/* Undo Notification */}
+    {showUndoNotification && deletedBlock && (
+      <UndoNotification
+        message={`Deleted "${deletedBlock.title || primaryTitle || 'Time Block'}"`}
+        onUndo={handleUndoDelete}
+        onDismiss={() => {
+          setShowUndoNotification(false)
+          setDeletedBlock(null)
+        }}
+        duration={10}
+      />
+    )}
+  </>
   )
 }

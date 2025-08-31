@@ -72,6 +72,10 @@ export function SOPView() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>('all')
   const [familyId, setFamilyId] = useState<string | null>(null)
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<TemplateWithSteps | null>(null)
+  const [quickExecuteTemplate, setQuickExecuteTemplate] = useState<TemplateWithSteps | null>(null)
+  const [executionSteps, setExecutionSteps] = useState<Record<string, boolean>>({})
 
   const supabase = createClient()
 
@@ -112,11 +116,16 @@ export function SOPView() {
       })
 
       if (!response.ok) {
+        if (response.status === 403) {
+          // User not part of a family yet
+          setTemplates([])
+          return
+        }
         throw new Error('Failed to fetch templates')
       }
 
       const result = await response.json()
-      setTemplates(result.data.templates || [])
+      setTemplates(result.templates || [])
     } catch (err) {
       console.error('Error loading templates:', err)
       throw err
@@ -136,7 +145,7 @@ export function SOPView() {
 
         if (response.ok) {
           const result = await response.json()
-          setTemplates(result.data.templates || [])
+          setTemplates(result.templates || [])
         }
       } catch (err) {
         console.error('Error searching templates:', err)
@@ -253,7 +262,7 @@ export function SOPView() {
 
       if (response.ok) {
         const result = await response.json()
-        const newTemplateId = result.data.template.id
+        const newTemplateId = result.template.id
 
         // Create steps if any
         if (templateData.template_steps && templateData.template_steps.length > 0) {
@@ -401,15 +410,17 @@ export function SOPView() {
                   <Badge variant="outline" className="text-sm px-3 py-1">
                     Quick Reference
                   </Badge>
-                  <Button 
-                    onClick={() => setShowCreateTemplate(true)}
-                    variant="default"
-                    size="sm"
-                    className="ml-4"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Template
-                  </Button>
+                  {familyId && (
+                    <Button 
+                      onClick={() => setShowCreateTemplate(true)}
+                      variant="default"
+                      size="sm"
+                      className="ml-4"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Template
+                    </Button>
+                  )}
                 </div>
               </motion.div>
             </div>
@@ -889,22 +900,26 @@ export function SOPView() {
         </Dialog>
 
         {/* Create Template Modal */}
-        <TemplateEditor
-          template={null}
-          isOpen={showCreateTemplate}
-          onClose={() => setShowCreateTemplate(false)}
-          onSave={handleCreateTemplate}
-          isNew={true}
-        />
+        {showCreateTemplate && familyId && (
+          <TemplateEditor
+            template={null}
+            isOpen={showCreateTemplate}
+            onClose={() => setShowCreateTemplate(false)}
+            onSave={handleCreateTemplate}
+            isNew={true}
+          />
+        )}
 
         {/* Edit Template Modal */}
-        <TemplateEditor
-          template={editingTemplate}
-          isOpen={!!editingTemplate}
-          onClose={() => setEditingTemplate(null)}
-          onSave={handleUpdateTemplate}
-          isNew={false}
-        />
+        {editingTemplate && (
+          <TemplateEditor
+            template={editingTemplate}
+            isOpen={!!editingTemplate}
+            onClose={() => setEditingTemplate(null)}
+            onSave={handleUpdateTemplate}
+            isNew={false}
+          />
+        )}
       </div>
     </AppShell>
   )

@@ -213,7 +213,11 @@ function DraggableTemplate({ template }: DraggableTemplateProps) {
   const IconComponent = hasSteps ? ListBulletIcon : DocumentTextIcon
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete template "${template.title}"?`)) return
+    const confirmMessage = template.is_system 
+      ? `Delete system template "${template.title}"? This action cannot be undone.`
+      : `Delete template "${template.title}"?`
+    
+    if (!window.confirm(confirmMessage)) return
     
     try {
       await templateService.deleteTemplate(template.id)
@@ -270,18 +274,16 @@ function DraggableTemplate({ template }: DraggableTemplateProps) {
                 >
                   <PencilIcon className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
                 </button>
-                {!template.is_system && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDelete()
-                    }}
-                    className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
-                    title="Delete template"
-                  >
-                    <TrashIcon className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400 hover:text-red-600" />
-                  </button>
-                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete()
+                  }}
+                  className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                  title="Delete template"
+                >
+                  <TrashIcon className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400 hover:text-red-600" />
+                </button>
               </div>
             </div>
             

@@ -13,7 +13,8 @@ import {
   PlusIcon,
   ArrowsUpDownIcon,
   ClipboardDocumentCheckIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { TimeBlockWithItems } from '@/lib/types/database'
 import { ScheduleItemCard } from './ScheduleItemCard'
@@ -22,6 +23,7 @@ import { scheduleService } from '@/lib/services/ScheduleService'
 import { useScheduleStore } from '@/lib/stores/useScheduleStore'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { toast } from 'sonner'
+import { UndoNotification } from '@/components/common/UndoNotification'
 
 interface TimeBlockProps {
   timeBlock: TimeBlockWithItems
@@ -31,6 +33,7 @@ interface TimeBlockProps {
 // Drop zone component for adding new items to time block
 function DropZoneForNewItems({ timeBlockId, date }: { timeBlockId: string; date: string }) {
   const { updateTimeBlock, weekSchedules } = useScheduleStore()
+  const { selectedMemberView } = useAppStore()
   
   const [{ isOver }, drop] = useDrop({
     accept: 'template',
@@ -41,13 +44,20 @@ function DropZoneForNewItems({ timeBlockId, date }: { timeBlockId: string; date:
         const timeBlock = schedule?.time_blocks.find(tb => tb.id === timeBlockId)
         const nextOrder = (timeBlock?.schedule_items?.length || 0) + 1
         
+        // Add member assignment metadata based on current view
+        const metadata: any = {}
+        if (selectedMemberView !== 'all') {
+          metadata.assigned_members = [selectedMemberView]
+        }
+        
         // Create the schedule item
         const newItem = await scheduleService.createScheduleItem(timeBlockId, {
           title: item.template.title,
           description: item.template.description,
           item_type: 'template_ref',
           template_id: item.template.id,
-          order_position: nextOrder
+          order_position: nextOrder,
+          metadata
         })
         
         // Update local state
@@ -168,8 +178,10 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
   const [isResizing, setIsResizing] = useState(false)
   const [resizeStartY, setResizeStartY] = useState(0)
   const [resizeStartHeight, setResizeStartHeight] = useState(0)
+  const [deletedBlock, setDeletedBlock] = useState<TimeBlockWithItems | null>(null)
+  const [showUndoNotification, setShowUndoNotification] = useState(false)
   const blockRef = useRef<HTMLDivElement>(null)
-  const { updateTimeBlock, weekSchedules } = useScheduleStore()
+  const { updateTimeBlock, weekSchedules, removeTimeBlock } = useScheduleStore()
   const { user } = useAppStore()
   
   // Set up drag functionality for moving the entire time block
@@ -238,6 +250,68 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
       dragPreview(blockRef.current)
     }
   }, [drop, dragPreview])
+  
+  // Handle delete time block
+  const handleDeleteBlock = async () => {
+    try {
+      // Store the block for undo BEFORE deleting
+      setDeletedBlock(timeBlock)
+      
+      // Delete from database first
+      await scheduleService.deleteTimeBlock(timeBlock.id)
+      
+      // Remove from local state after successful deletion
+      removeTimeBlock(date, timeBlock.id)
+      
+      // Show undo notification after successful deletion
+      setShowUndoNotification(true)
+      
+      toast.success('Time block deleted')
+    } catch (error) {
+      console.error('Error deleting time block:', error)
+      toast.error('Failed to delete time block')
+      // Don't need to restore since we didn't remove from local state yet
+    }
+  }
+  
+  // Handle undo delete
+  const handleUndoDelete = async () => {
+    if (!deletedBlock) return
+    
+    try {
+      // Recreate the time block
+      const restoredBlock = await scheduleService.createTimeBlock(deletedBlock.schedule_id, {
+        start_time: deletedBlock.start_time,
+        end_time: deletedBlock.end_time,
+        title: deletedBlock.title,
+        color: deletedBlock.color
+      })
+      
+      // Restore items if any
+      if (deletedBlock.schedule_items && deletedBlock.schedule_items.length > 0) {
+        for (const item of deletedBlock.schedule_items) {
+          await scheduleService.createScheduleItem(restoredBlock.id, {
+            title: item.title,
+            description: item.description,
+            item_type: item.item_type,
+            template_id: item.template_id,
+            order_position: item.order_position,
+            metadata: item.metadata
+          })
+        }
+      }
+      
+      // Update local state
+      updateTimeBlock(restoredBlock.id, restoredBlock)
+      
+      setShowUndoNotification(false)
+      setDeletedBlock(null)
+      toast.success('Time block restored')
+    } catch (error) {
+      console.error('Error restoring time block:', error)
+      toast.error('Failed to restore time block')
+    }
+  }
   
   // Handle resize
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -374,6 +448,15 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
         >
           <Bars3Icon className="h-4 w-4 text-gray-500" />
         </div>
+
+        {/* Delete Button */}
+        <button
+          onClick={handleDeleteBlock}
+          className="absolute top-2 right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-sm hover:shadow-md"
+          title="Delete time block"
+        >
+          <XMarkIcon className="h-4 w-4" />
+        </button>
 
         {/* Main Content */}
         <div className="h-full px-8 py-2 flex flex-col justify-center">
@@ -587,6 +670,19 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Undo Notification */}
+      {showUndoNotification && deletedBlock && (
+        <UndoNotification
+          message={`Deleted "${deletedBlock.title || 'Time Block'}"`}
+          onUndo={handleUndoDelete}
+          onDismiss={() => {
+            setShowUndoNotification(false)
+            setDeletedBlock(null)
+          }}
+          duration={10}
+        />
+      )}
     </>
   )
 }

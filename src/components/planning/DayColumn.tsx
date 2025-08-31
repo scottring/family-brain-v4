@@ -114,9 +114,11 @@ export function DayColumn({
       if (updatedSchedule) {
         setWeekSchedule(date, updatedSchedule)
         console.log('Updated schedule:', updatedSchedule)
+        toast.success(`Added ${template.title} to schedule`)
       }
     } catch (error) {
       console.error('Error creating time block from template:', error)
+      toast.error('Failed to add template to schedule')
     }
   }
 

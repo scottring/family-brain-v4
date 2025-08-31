@@ -116,9 +116,10 @@ export function AppInitializer() {
 
           setFamilies(families || [])
           
-          // Set the first family as current
+          // Try to restore the previously selected family from localStorage, or use the first one
           if (families && families.length > 0) {
-            const currentFamily = families[0]
+            const storedFamilyId = typeof window !== 'undefined' ? localStorage.getItem('currentFamilyId') : null
+            const currentFamily = families.find(f => f.id === storedFamilyId) || families[0]
             setCurrentFamilyId(currentFamily.id)
             
             // Load family members with profiles
