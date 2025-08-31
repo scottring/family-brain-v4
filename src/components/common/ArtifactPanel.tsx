@@ -41,7 +41,7 @@ export function ArtifactPanel() {
   // Load template instance when panel opens
   useEffect(() => {
     const loadTemplateInstance = async () => {
-      if (!scheduleItem?.template_instance_id || !artifactPanelItemId) {
+      if (!scheduleItem?.template_instance || !artifactPanelItemId) {
         setTemplateInstance(null)
         return
       }
@@ -51,7 +51,7 @@ export function ArtifactPanel() {
         // In a real app, you'd have a service method to get template instance by ID
         // For now, we'll use the template instance from the schedule item
         if (scheduleItem.template_instance) {
-          setTemplateInstance(scheduleItem.template_instance)
+          setTemplateInstance(scheduleItem.template_instance as TemplateInstanceWithSteps)
         }
       } catch (error) {
         console.error('Error loading template instance:', error)
@@ -195,9 +195,9 @@ export function ArtifactPanel() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                 {scheduleItem.title}
               </h2>
-              {scheduleItem.template && (
+              {scheduleItem.template_instance && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {scheduleItem.template.title}
+                  Template
                 </p>
               )}
             </div>
@@ -232,7 +232,7 @@ export function ArtifactPanel() {
                 <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <div className="flex items-center space-x-3 mb-3">
                     <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                      {templateInstance.template.icon ? (
+                      {templateInstance.template?.icon ? (
                         <span className="text-lg">{templateInstance.template.icon}</span>
                       ) : (
                         <DocumentTextIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -240,11 +240,11 @@ export function ArtifactPanel() {
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-white">
-                        {templateInstance.template.title}
+                        {templateInstance.template?.title || 'Template'}
                       </h3>
-                      {templateInstance.template.description && (
+                      {templateInstance.template?.description && (
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {templateInstance.template.description}
+                          {templateInstance.template?.description}
                         </p>
                       )}
                     </div>

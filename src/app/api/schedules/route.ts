@@ -3,6 +3,8 @@ import { requireFamilyAccess, createErrorResponse, createSuccessResponse } from 
 import { createClient } from '@/lib/supabase/server'
 import { ScheduleService } from '@/lib/services/ScheduleService'
 
+const scheduleService = new ScheduleService()
+
 // GET /api/schedules - Get schedules with optional date range and filters
 export async function GET(request: NextRequest) {
   const { user, error } = await requireFamilyAccess(request)
