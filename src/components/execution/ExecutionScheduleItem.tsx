@@ -45,7 +45,7 @@ export function ExecutionScheduleItem({
   const [localItem, setLocalItem] = useState(item)
   
   const isCompleted = !!localItem.completed_at
-  const hasSteps = localItem.template?.template_steps?.length > 0
+  const hasSteps = (localItem.template?.template_steps?.length ?? 0) > 0
   const hasInstance = !!localItem.template_instance
   const editingUsers = getEditingUsers(localItem.id)
   const isBeingEdited = editingUsers.length > 0
