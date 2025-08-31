@@ -99,7 +99,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         // Update presence for all users
         Object.entries(newState).forEach(([userId, presences]) => {
           if (presences.length > 0) {
-            const presence = presences[0] as PresencePayload
+            const presence = presences[0] as unknown as PresencePayload
             updateMemberPresence(userId, {
               ...presence,
               is_online: true
@@ -110,7 +110,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
       channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
         console.log('User joined:', key, newPresences)
-        const presence = newPresences[0] as PresencePayload
+        const presence = newPresences[0] as unknown as PresencePayload
         if (presence) {
           updateMemberPresence(key, {
             ...presence,
@@ -125,7 +125,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
       channel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         console.log('User left:', key, leftPresences)
-        const presence = leftPresences[0] as PresencePayload
+        const presence = leftPresences[0] as unknown as PresencePayload
         if (presence) {
           setMemberOffline(key)
           
