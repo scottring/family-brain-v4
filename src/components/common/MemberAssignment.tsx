@@ -168,7 +168,7 @@ export function MemberAssignment({
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={details.avatar} />
+                    <AvatarImage src={details.avatar || undefined} />
                     <AvatarFallback className="text-xs bg-orange-100 text-orange-700">
                       {details.initials}
                     </AvatarFallback>
@@ -200,7 +200,7 @@ export function MemberAssignment({
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={details.avatar} />
+                    <AvatarImage src={details.avatar || undefined} />
                     <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
                       {details.initials}
                     </AvatarFallback>
