@@ -139,8 +139,8 @@ function DropZoneForNestedItems({
         
         // Update local state
         if (timeBlock) {
-          const updatedItems = [...(timeBlock.schedule_items || []), newItem]
-            .sort((a, b) => a.order_position - b.order_position)
+          const updatedItems = [...(timeBlock.schedule_items || []), newItem as any]
+            .sort((a, b) => a.order_position - b.order_position) as ScheduleItemWithTemplate[]
           
           updateTimeBlock(timeBlockId, {
             schedule_items: updatedItems
