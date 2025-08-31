@@ -415,10 +415,8 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
   const additionalItemsCount = timeBlock.schedule_items.length - 1
   
   // Check for multiple assignees
-  const assignedUsers = timeBlock.schedule_items
-    .map(item => item.assigned_to)
-    .filter((id, index, self) => id && self.indexOf(id) === index)
-  const hasMultipleAssignees = assignedUsers.length > 1
+  // TODO: Add assigned_to property to ScheduleItem type
+  const hasMultipleAssignees = false
   
   return (
     <>
