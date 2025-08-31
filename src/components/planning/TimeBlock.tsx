@@ -296,7 +296,7 @@ export function TimeBlock({ timeBlock, date }: TimeBlockProps) {
             title: item.title,
             description: item.description || undefined,
             item_type: item.item_type,
-            template_id: item.template_id,
+            template_id: item.template_id || undefined,
             order_position: item.order_position,
             metadata: item.metadata
           })
