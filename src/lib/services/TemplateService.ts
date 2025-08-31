@@ -472,6 +472,18 @@ export class TemplateService {
       }
 
       // No existing instance, create a new one
+      // First verify the template exists
+      const { data: templateExists, error: templateCheckError } = await this.supabase
+        .from('templates')
+        .select('id')
+        .eq('id', templateId)
+        .single()
+
+      if (templateCheckError || !templateExists) {
+        console.error('Template does not exist:', templateId, templateCheckError)
+        throw new Error(`Template with ID ${templateId} does not exist or has been deleted`)
+      }
+
       const { data: insertedData, error: insertError } = await this.supabase
         .from('template_instances')
         .insert({

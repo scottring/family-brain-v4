@@ -33,6 +33,7 @@ import { Progress } from '@/components/ui/progress'
 import { ExecutionTimeBlock } from './ExecutionTimeBlock'
 import { CurrentTimeIndicator } from './CurrentTimeIndicator'
 import { FocusMode } from './FocusMode'
+import { TrackingDashboard } from '@/components/tracking/TrackingDashboard'
 import { useAppStore } from '@/lib/stores/useAppStore'
 import { ScheduleWithDetails, ScheduleItem, TimeBlockWithItems } from '@/lib/types/database'
 
@@ -572,10 +573,12 @@ export function TodayView() {
           )}
         </AnimatePresence>
 
-        {/* Time Blocks */}
+        {/* Main Content Grid */}
         <div className="px-6 pb-12">
           <div className="max-w-6xl mx-auto">
-            <div className="space-y-4">
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Time Blocks - Main Column */}
+              <div className="lg:col-span-2 space-y-4">
               {filteredTimeBlocks && filteredTimeBlocks.map((timeBlock, index) => {
                 const now = new Date()
                 const currentTime = now.toTimeString().split(' ')[0].slice(0, 5)
@@ -592,28 +595,36 @@ export function TodayView() {
                   />
                 )
               })}
+              
+              {/* Empty State for No Time Blocks */}
+              {(!todayData || !todayData.schedule || !todayData.schedule?.time_blocks || todayData.schedule.time_blocks?.length === 0) && (
+                <Card className="border-dashed border-2 border-muted">
+                  <CardContent className="p-12 text-center">
+                    <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      No time blocks scheduled
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      Add some time blocks to your schedule to start executing your day.
+                    </p>
+                    <Button asChild>
+                      <Link href="/planning">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Plan Your Day
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              </div>
+              
+              {/* Tracking Dashboard - Sidebar */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-24">
+                  <TrackingDashboard />
+                </div>
+              </div>
             </div>
-            
-            {/* Empty State for No Time Blocks */}
-            {(!todayData || !todayData.schedule || !todayData.schedule?.time_blocks || todayData.schedule.time_blocks?.length === 0) && (
-              <Card className="border-dashed border-2 border-muted">
-                <CardContent className="p-12 text-center">
-                  <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    No time blocks scheduled
-                  </h3>
-                  <p className="text-muted-foreground mb-6">
-                    Add some time blocks to your schedule to start executing your day.
-                  </p>
-                  <Button asChild>
-                    <Link href="/planning">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Plan Your Day
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       </div>

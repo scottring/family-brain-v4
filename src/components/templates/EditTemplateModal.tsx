@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -29,7 +30,8 @@ import {
   Save,
   Copy,
   Trash2,
-  ListPlus
+  ListPlus,
+  Trophy
 } from 'lucide-react'
 import { TemplateWithSteps, TemplateCategory, TemplateStep, StepType, AssigneeType } from '@/lib/types/database'
 import { templateService } from '@/lib/services/TemplateService'
@@ -76,6 +78,8 @@ export function EditTemplateModal({
   const [isSaving, setIsSaving] = useState(false)
   const [editMode, setEditMode] = useState<'permanent' | 'temporary'>(mode)
   const [showBulkAdd, setShowBulkAdd] = useState(false)
+  const [isTrackable, setIsTrackable] = useState(false)
+  const [trackingEmoji, setTrackingEmoji] = useState('📊')
 
   useEffect(() => {
     if (template) {
@@ -83,11 +87,15 @@ export function EditTemplateModal({
       setDescription(template.description || '')
       setCategory(template.category || 'custom')
       setSteps(template.template_steps || [])
+      setIsTrackable((template as any).is_trackable || false)
+      setTrackingEmoji((template as any).tracking_emoji || '📊')
     } else {
       setTitle('')
       setDescription('')
       setCategory('custom')
       setSteps([])
+      setIsTrackable(false)
+      setTrackingEmoji('📊')
     }
   }, [template])
 
@@ -163,8 +171,10 @@ export function EditTemplateModal({
             savedTemplate = await templateService.updateTemplate(template.id, {
               title,
               description: description || undefined,
-              category
-            })
+              category,
+              is_trackable: isTrackable,
+              tracking_emoji: trackingEmoji
+            } as any)
           } catch (error: any) {
             console.log('Caught error in updateTemplate:', {
               code: error?.code,
@@ -179,8 +189,10 @@ export function EditTemplateModal({
                 family_id: currentFamilyId,
                 title,
                 description: description || undefined,
-                category
-              })
+                category,
+                is_trackable: isTrackable,
+                tracking_emoji: trackingEmoji
+              } as any)
             } else {
               throw error
             }
@@ -244,8 +256,10 @@ export function EditTemplateModal({
             family_id: currentFamilyId,
             title,
             description: description || undefined,
-            category
-          })
+            category,
+            is_trackable: isTrackable,
+            tracking_emoji: trackingEmoji
+          } as any)
           
           // Add steps
           for (let i = 0; i < steps.length; i++) {
@@ -379,6 +393,49 @@ export function EditTemplateModal({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Tracking Settings */}
+          <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="trackable" className="flex items-center space-x-2">
+                  <Trophy className="h-4 w-4 text-yellow-500" />
+                  <span>Enable Progress Tracking</span>
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Track daily completions and set reward goals
+                </p>
+              </div>
+              <Switch
+                id="trackable"
+                checked={isTrackable}
+                onCheckedChange={setIsTrackable}
+              />
+            </div>
+            
+            {isTrackable && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex items-center space-x-2 pt-2"
+              >
+                <Label htmlFor="trackingEmoji" className="text-sm">
+                  Tracking Icon:
+                </Label>
+                <Input
+                  id="trackingEmoji"
+                  value={trackingEmoji}
+                  onChange={(e) => setTrackingEmoji(e.target.value)}
+                  className="w-16 text-center text-xl"
+                  maxLength={2}
+                />
+                <span className="text-sm text-muted-foreground">
+                  This icon will appear in tracking dashboards
+                </span>
+              </motion.div>
+            )}
           </div>
 
           {/* Steps */}

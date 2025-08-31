@@ -74,7 +74,11 @@ export function ExecutionScheduleItem({
   
   // Auto-create template instance if item has template but no instance
   useEffect(() => {
-    if (localItem.template_id && !localItem.template_instance && !isCreatingInstance) {
+    // Only auto-create if we have a valid template_id (not a temporary one)
+    if (localItem.template_id && 
+        !localItem.template_instance && 
+        !isCreatingInstance &&
+        !localItem.template_id.startsWith('temp-')) {
       handleCreateInstance()
     }
   }, [localItem.template_id, localItem.template_instance])
@@ -185,9 +189,15 @@ export function ExecutionScheduleItem({
       setIsExpanded(true)
       
       toast.success('Checklist created! You can now track your progress.')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating template instance:', error)
-      toast.error('Failed to create checklist')
+      
+      // Provide more specific error messages
+      if (error.message?.includes('does not exist')) {
+        toast.error('Template not found. It may have been deleted.')
+      } else {
+        toast.error('Failed to create checklist')
+      }
     } finally {
       setIsCreatingInstance(false)
     }
