@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Family Brain V4 - Smart Daily Companion",
@@ -38,9 +37,7 @@ export default function RootLayout({
         <link rel="icon" href="/next.svg" type="image/svg+xml" />
       </head>
       <body className="font-sans" suppressHydrationWarning>
-        <Providers>
-          {children}
-        </Providers>
+        {children}
       </body>
     </html>
   );
